@@ -13,10 +13,18 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - if: env.REF == ''
+        run: echo "::notice::Segredos do Supabase ainda nao configurados - nada a publicar."
+      - if: env.REF != ''
+        uses: actions/checkout@v4
+      - if: env.REF != ''
+        uses: supabase/setup-cli@v1
         with: { version: latest }
-      - run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-      - run: supabase db push
-      - run: supabase functions deploy avisos-vencimento --no-verify-jwt
+      - if: env.REF != ''
+        run: supabase link --project-ref "$REF"
+      - if: env.REF != ''
+        run: supabase db push
+      - if: env.REF != ''
+        run: supabase functions deploy avisos-vencimento --no-verify-jwt
