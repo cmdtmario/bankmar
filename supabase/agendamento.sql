@@ -1,4 +1,5 @@
 -- Agenda os avisos diários às 8h de Brasília (11:00 UTC). Rodar UMA vez no SQL Editor do Supabase,
+-- (Com a integração GitHub do Supabase, migrations e a função de avisos são publicadas a cada push na main.)
 -- depois de publicar a função "avisos-vencimento". Troque os dois valores entre <>.
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
