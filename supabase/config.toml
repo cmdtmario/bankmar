@@ -1,5 +1,6 @@
 project_id = "bankmar"
 
+# Integração GitHub do Supabase ativa (working directory ".", branch main).
 # Configuração do Supabase CLI (opcional). O essencial: cadastro público desligado (RF-02)
 # e verificação em duas etapas por app autenticador (RF-01).
 [auth]
