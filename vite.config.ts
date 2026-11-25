@@ -12,14 +12,14 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectManifest: { maximumFileSizeToCacheInBytes: 6 * 1024 * 1024 },
       manifest: {
-        name: 'BanKMar',
-        short_name: 'BanKMar',
+        name: 'BankMaR',
+        short_name: 'BankMaR',
         description: 'Finanças pessoais do Mário',
         lang: 'pt-BR',
         start_url: '/',
         display: 'standalone',
-        background_color: '#f6f7f9',
-        theme_color: '#1f5eff',
+        background_color: '#080808',
+        theme_color: '#080808',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },

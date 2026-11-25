@@ -15,7 +15,7 @@ export function Compartilhado() {
     supabase.rpc('get_shared_summary', { p_token: token ?? '' }).then(({ data }) => setR((data as Resumo) ?? { disponivel: false }));
   }, [token]);
   if (!r) return <main><Carregando /></main>;
-  if (!r.disponivel) return <main><h1>BanKMar</h1><div className="card">Este link não está mais disponível.</div></main>;
+  if (!r.disponivel) return <main><h1>BankMaR</h1><div className="card">Este link não está mais disponível.</div></main>;
   return (
     <main style={{ paddingBottom: 24 }}>
       <h1>Resumo de {r.pessoa}</h1>

@@ -34,7 +34,7 @@ function Area() {
   return (
     <CadastrosProvider>
       <header className="topo">
-        <strong>BanKMar</strong>
+        <div className="marca"><img src="/monograma.png" alt="" /><span>BankMaR</span></div>
         <div className="linha">
           <a href={URL_COFRE} target="_blank" rel="noopener noreferrer"><button>🔐 Abrir cofre</button></a>
           <button onClick={() => supabase.auth.signOut()}>Sair</button>
