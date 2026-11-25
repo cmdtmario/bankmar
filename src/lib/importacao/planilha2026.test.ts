@@ -1,6 +1,6 @@
 // Usa a planilha real do Mário, se presente localmente (não versionada: contém dados pessoais).
 // Caminho em PLANILHA_2026 ou ../data/*Contabilidade*.xlsx.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { importarPlanilha2026, totaisDoMes, PESSOA_A_REVISAR } from './planilha2026';
@@ -9,7 +9,8 @@ const dir = path.resolve(__dirname, '../../../../data');
 const arq = process.env.PLANILHA_2026 ?? (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /Contabilidade/.test(f)).map((f) => path.join(dir, f))[0] : undefined);
 
 describe.skipIf(!arq)('Importação da Contabilidade 2026 (RF-90)', () => {
-  const r = importarPlanilha2026(fs.readFileSync(arq!));
+  let r: ReturnType<typeof importarPlanilha2026>;
+  beforeAll(() => { r = importarPlanilha2026(fs.readFileSync(arq!)); });
   it('lê os 12 meses e ignora COFRE, CARTÕES, IRRF e CHURRAS', () => {
     expect(r.meses.map((m) => m.competencia)).toEqual(Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, '0')}-01`));
     expect(r.ignoradas.filter((i) => i.linha == null).map((i) => i.aba).sort()).toEqual(['CARTÕES', 'CHURRAS - GEAUD', 'COFRE', 'IRRF 2026']);
