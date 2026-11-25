@@ -50,14 +50,14 @@ nav.abas a { flex: 1; text-align: center; padding: 10px 2px 12px; color: var(--s
 nav.abas a.active { color: var(--ouro-claro); font-weight: 600; box-shadow: inset 0 2px 0 var(--ouro); }
 header.topo { background: rgba(8, 8, 8, .92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--linha); padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 5; }
 .marca { display: flex; align-items: center; gap: 8px; }
-.marca img { height: 36px; width: auto; }
+.marca img { height: 36px; width: auto; mix-blend-mode: lighten; }
 .marca span { font-family: var(--serif); font-size: 1.15rem; font-weight: 600; letter-spacing: .05em; background: var(--grad-ouro); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .modal-fundo { position: fixed; inset: 0; background: rgba(0, 0, 0, .7); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
 .modal { background: var(--card); border: 1px solid var(--linha); width: 100%; max-width: 640px; max-height: 92vh; overflow: auto; border-radius: 16px 16px 0 0; padding: 14px; }
 @media (min-width: 700px) { .modal-fundo { align-items: center; } .modal { border-radius: 16px; } }
 .barra { height: 8px; background: #221f19; border-radius: 4px; overflow: hidden; }
 .barra > div { height: 100%; background: var(--grad-ouro); }
-.login-logo { display: block; width: min(300px, 80vw); margin: 16px auto 8px; }
+.login-logo { display: block; width: min(300px, 80vw); margin: 16px auto 8px; mix-blend-mode: lighten; }
 details summary { cursor: pointer; color: var(--ouro); }
 code { color: var(--ouro-claro); }
 img[alt="QR code do autenticador"] { background: #fff; padding: 8px; border-radius: 8px; }
