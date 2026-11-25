@@ -1,32 +1,57 @@
-# React + TypeScript + Vite
+# BanKMar — finanças pessoais
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Sistema pessoal que substitui as planilhas de contabilidade, investimentos e milhas.
+Especificação: `specs/financas-pessoais.md` (no projeto do Claude). Esta versão implementa a **Entrega 1**:
+contas, faturas, categorias, divisão com outras pessoas, avisos e importação da planilha 2026.
 
-Currently, two official plugins are available:
+- **Telas:** React + Vite, instalável no celular (PWA), hospedado no Netlify. Deploy automático a cada push na `main`.
+- **Banco, login e agendamento:** Supabase, plano gratuito. Toda regra de acesso está no banco (RLS); só uma sessão com verificação em duas etapas lê dados.
+- **Faturas:** lidas no navegador (pdf.js). O PDF não vai para servidor nenhum. Há leitores para Itaú e Caixa; os demais emissores usam "Colar texto".
+- **Avisos:** Edge Function diária às 8h de Brasília, com push (Web Push) e e-mail (Resend, plano gratuito).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Implantação (uma vez)
 
-## React Compiler
+### 1. Supabase
+1. Crie um projeto em supabase.com (região *South America (São Paulo)*) e anote a **senha do banco**.
+2. Em **Authentication → Users → Add user**, crie o seu usuário (e-mail e senha).
+3. Em **Authentication → Sign In / Providers**, desligue **Allow new users to sign up**. Só você terá acesso.
+4. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. GitHub → Supabase (publica o banco e a função automaticamente)
+Em **GitHub → cmdtmario/bankmar → Settings → Secrets and variables → Actions**, crie:
+- `SUPABASE_ACCESS_TOKEN`: gerado em supabase.com → Account → Access Tokens
+- `SUPABASE_PROJECT_REF`: o ID do projeto (o trecho antes de `.supabase.co`)
+- `SUPABASE_DB_PASSWORD`: a senha do banco
 
-## Expanding the Oxlint configuration
+Depois, em **Actions → Supabase → Run workflow**, rode uma vez. Isso cria as tabelas e publica a função de avisos.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+### 3. Netlify
+Em **Site configuration → Environment variables**:
+- `VITE_SUPABASE_URL`: a Project URL
+- `VITE_SUPABASE_ANON_KEY`: a chave anon public
+- `VITE_VAPID_PUBLIC_KEY`: a chave pública de push (ver passo 4)
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+Em seguida, use **Deploys → Trigger deploy**.
+
+### 4. Avisos (push e e-mail)
+1. Crie uma conta gratuita em resend.com e gere uma **API key**.
+2. Em **Supabase → Edge Functions → Secrets**, crie:
+   `CRON_SECRET` (qualquer texto longo e aleatório), `RESEND_API_KEY`, `AVISO_REMETENTE` (`BanKMar <onboarding@resend.dev>`),
+   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT` (`mailto:seu-email`).
+3. No **SQL Editor**, rode `supabase/agendamento.sql` trocando o ID do projeto e o `CRON_SECRET`.
+4. No app, em **Mais**, salve seu e-mail e toque em **Ativar notificações neste aparelho**.
+
+### 5. Primeiro acesso
+1. Entre com e-mail e senha e leia o QR code no seu app autenticador.
+2. Em **Mais → Importar planilha 2026**, envie a planilha, confira os totais e grave.
+3. Em **Mais → Cartões**, complete o final e o dia de vencimento de cada cartão e escolha o leitor (Itaú, Caixa ou Outro).
+
+## Desenvolvimento
 ```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+npm ci
+npx vitest run              # testes (leitores, regras, importação, avisos)
+supabase/tests/run.sh       # testes do banco num Postgres local (porta 5433)
+npm run dev
+```
+Dados pessoais (planilhas, PDFs) nunca entram no repositório (`.gitignore`). As faturas de teste em
+`src/lib/faturas/__fixtures__` são anonimizadas por `scripts/anonimizar-fixture.mjs`.

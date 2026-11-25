@@ -34,7 +34,7 @@ export async function extrairItens(arquivo: File, pedirSenha: (tentativaErrada: 
       itens.push({ p, x: Math.round(it.transform[4]), y: Math.round(vp.height - it.transform[5]), s: it.str });
     }
   }
-  await doc.destroy();
+  await tarefa.destroy();
   if (!itens.length) throw new LeitorError('O PDF não tem texto (parece imagem escaneada). Use "Colar texto".');
   return itens;
 }

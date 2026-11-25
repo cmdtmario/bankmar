@@ -734,3 +734,8 @@ begin
                              'ignoradas', p -> 'ignoradas', 'divergencias', p -> 'divergencias'));
   return jsonb_build_object('contas', n_contas, 'faturas', n_fat, 'lancamentos', n_lin);
 end $$;
+
+-- Visitante anônimo não acessa nenhuma tabela ou visão; só a função do link (RF-40).
+revoke all on all tables in schema public from anon;
+revoke execute on all functions in schema public from anon;
+grant execute on function public.get_shared_summary(text) to anon;

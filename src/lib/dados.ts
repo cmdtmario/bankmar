@@ -41,7 +41,7 @@ const ultimoDia = (comp: string) => {
 /** RF-10: garante o mês e gera as contas recorrentes que ainda não existem. */
 export async function garantirMes(comp: string) {
   ok(await supabase.from('months').upsert({ competencia: comp }, { onConflict: 'user_id,competencia', ignoreDuplicates: true }));
-  const modelos = ok(await supabase.from('bill_templates').select('*').eq('ativo', true).lte('inicio', somaMeses(comp, 1))) as Modelo[];
+  const modelos = ok(await supabase.from('bill_templates').select('*').eq('ativo', true).lt('inicio', somaMeses(comp, 1))) as Modelo[];
   if (!modelos.length) return;
   const existentes = ok(await supabase.from('bills').select('template_id, valor').eq('competencia', comp).not('template_id', 'is', null)) as { template_id: string }[];
   const ja = new Set(existentes.map((e) => e.template_id));

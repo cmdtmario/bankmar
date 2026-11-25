@@ -3,7 +3,6 @@
 // IRRF (entrega 4) e CHURRAS (fora do escopo) são ignoradas e listadas no relatório.
 import * as XLSX from 'xlsx';
 import { centavos, somaCentavos } from '../formato';
-import type { RegraDivisao } from '../regras';
 import { contemNumeroCartao } from '../regras';
 
 export const PESSOA_A_REVISAR = 'A revisar (planilha)';

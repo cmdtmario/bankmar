@@ -85,12 +85,6 @@ export function EditorDivisao({ valor, regra, onChange }: { valor: number; regra
     if (regra.tipo !== 'pct' && regra.tipo !== 'valor') return;
     onChange({ ...regra, partes: regra.partes.map((x, k) => (k === i ? { ...x, ...p } : x)) });
   };
-  const SelTag = ({ v, on }: { v: string | null | undefined; on: (s: string | null) => void }) => (
-    <select value={v ?? ''} onChange={(e) => on(e.target.value || null)} aria-label="Marcador">
-      <option value="">sem marcador</option>
-      {c.tags.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-    </select>
-  );
   return (
     <div>
       <div className="linha">
@@ -107,7 +101,7 @@ export function EditorDivisao({ valor, regra, onChange }: { valor: number; regra
           <select value={regra.pessoa_id} onChange={(e) => onChange({ ...regra, pessoa_id: e.target.value })} aria-label="Pessoa">
             {pessoas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
           </select>
-          <SelTag v={regra.tag_id} on={(t) => onChange({ ...regra, tag_id: t })} />
+          <SelTag tags={c.tags} v={regra.tag_id} on={(t) => onChange({ ...regra, tag_id: t })} />
         </div>
       )}
       {partes.map((p, i) => (
@@ -121,7 +115,7 @@ export function EditorDivisao({ valor, regra, onChange }: { valor: number; regra
             <input style={{ width: 100 }} inputMode="decimal" defaultValue={p.valor ?? ''} onBlur={(e) => setParte(i, { valor: numeroDe(e.target.value) ?? 0 })} aria-label="Valor" />
           )}
           <span className="sub">{regra.tipo === 'pct' ? '%' : 'R$'}</span>
-          <SelTag v={p.tag_id} on={(t) => setParte(i, { tag_id: t })} />
+          <SelTag tags={c.tags} v={p.tag_id} on={(t) => setParte(i, { tag_id: t })} />
           {partes.length > 1 && <button className="perigo" onClick={() => onChange({ ...regra, partes: partes.filter((_, k) => k !== i) } as RegraDivisao)}>remover</button>}
         </div>
       ))}
@@ -130,6 +124,15 @@ export function EditorDivisao({ valor, regra, onChange }: { valor: number; regra
       )}
       {erro ? <Erro msg={erro} /> : <p className="sub">{previa}</p>}
     </div>
+  );
+}
+
+function SelTag({ tags, v, on }: { tags: Cadastros['tags']; v: string | null | undefined; on: (s: string | null) => void }) {
+  return (
+    <select value={v ?? ''} onChange={(e) => on(e.target.value || null)} aria-label="Marcador">
+      <option value="">sem marcador</option>
+      {tags.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+    </select>
   );
 }
 
