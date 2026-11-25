@@ -96,7 +96,7 @@ Abreviação usada nos caminhos: `M` = `supabase/migrations/20261125000000_entre
 ## Arquivos criados
 
 - `supabase/migrations/20261125000000_entrega1.sql` — esquema, RLS aal2, Luhn, divisão, auditoria, visões, RPCs de fatura, planilha e link
-- `supabase/tests/*` — stub do Supabase e 31 testes SQL
+- `supabase/tests/*` — stub do Supabase e 35 testes SQL
 - `supabase/functions/avisos-vencimento/*` — Edge Function de avisos; `supabase/agendamento.sql` — cron das 8h
 - `src/lib/faturas/*` — leitores Itaú, Caixa e texto; extração de PDF; fixtures anonimizadas
 - `src/lib/regras.ts`, `boleto.ts`, `resumo.ts`, `formato.ts`, `token.ts`, `pdfResumo.ts`, `exportar.ts`, `push.ts`, `dados.ts`, `supabase.ts`
