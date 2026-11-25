@@ -76,8 +76,8 @@ Substituir as três planilhas manuais do Mário (Contabilidade 2026, Investiment
 | RF-21 | Os leitores são por emissor, não por cartão: um leitor atende todos os cartões do mesmo layout de PDF. A entrega 1 inclui os leitores Itaú (amostra: Itaú Azul Infinite) e Caixa (amostra: Caixa Visa/Elo). Os demais emissores entram à medida que o Mário fornecer uma fatura de amostra. Até lá, usam o plano B (RF-22). | Indispensável |
 | RF-21a | Os dados pessoais impressos na fatura (CPF, endereço, linha digitável, limite) são descartados na leitura. Do cabeçalho, só se aproveitam vencimento, total, final do cartão (4 dígitos) e lançamentos. | Indispensável |
 | RF-22 | Plano B de importação: o usuário cola um texto em formato tabular padronizado (o que o ChatGPT gratuito devolve hoje, ou um CSV do banco) e o sistema importa as mesmas colunas. | Indispensável |
-| RF-23 | Depois de cada importação, uma tela de revisão permite editar descrição, categoria, responsável/divisão e marcar a linha como conferida antes de confirmar. | Indispensável |
-| RF-24 | O sistema guarda as correções e as reaplica. Uma parcela seguinte de uma compra já lançada (mesmo estabelecimento, mesmo valor de parcela, número da parcela seguinte) recebe automaticamente a descrição, a categoria e a divisão anteriores. | Indispensável |
+| RF-23 | Depois de cada importação, uma tela de revisão permite informar um lembrete amigável, a categoria e o responsável/divisão de cada linha e marcá-la como conferida antes de confirmar. A descrição que veio da fatura fica congelada (não editável); o lembrete é um campo separado e opcional. | Indispensável |
+| RF-24 | Uma parcela seguinte de uma compra já lançada (mesmo estabelecimento, mesmo valor de parcela, número da parcela seguinte) recebe automaticamente o lembrete, a categoria e a divisão das parcelas anteriores. Não há regras aprendidas por estabelecimento (decisão de 25/11/2026). | Indispensável |
 | RF-25 | Ao lançar ou importar uma compra parcelada, o sistema projeta as parcelas restantes nas faturas futuras. Na importação seguinte, as projeções são casadas com as linhas reais, sem duplicar. | Indispensável |
 | RF-26 | O total extraído é comparado ao total impresso na fatura. Se houver diferença, a tela de revisão mostra o valor e impede a confirmação até o usuário justificar ou corrigir. | Indispensável |
 | RF-27 | Estornos e créditos (valores negativos) são aceitos e abatidos do responsável correspondente. | Indispensável |
@@ -88,7 +88,7 @@ Substituir as três planilhas manuais do Mário (Contabilidade 2026, Investiment
 | ID | Requisito | Prioridade |
 |----|-----------|------------|
 | RF-30 | Existe uma lista editável de categorias (sugestão inicial: Moradia, Alimentação, Delivery, Mercado, Transporte, Viagem, Milhas, Saúde, Pet, Vestuário, Assinaturas, Salão do Diego, Presentes, Outros). | Indispensável |
-| RF-31 | O sistema sugere a categoria por regras de estabelecimento (ex.: "99Food" → Delivery). Toda correção na revisão vira regra, com confirmação. | Indispensável |
+| RF-31 | O sistema sugere a categoria por regras de estabelecimento cadastradas pelo usuário em “Categorias e regras” (com uma lista inicial). Correções na revisão não viram regra automaticamente (decisão de 25/11/2026). | Indispensável |
 | RF-32 | Visões: gasto por categoria no mês, evolução por categoria em 12 meses e top estabelecimentos. | Indispensável |
 
 ### 4.5 Divisão com outras pessoas
@@ -292,7 +292,7 @@ A entrega está pronta quando **todos** os itens abaixo puderem ser verificados 
 - [ ] Um gasto do Diego com o marcador "Salão" aparece num grupo separado, com subtotal, no resumo e no link dele.
 - [ ] Colar no plano B um texto no formato padronizado importa as linhas corretamente.
 - [ ] Depois de lançar uma compra em 6x, as 5 parcelas seguintes aparecem nas faturas futuras. A importação do mês seguinte não as duplica e mantém descrição e divisão.
-- [ ] Corrigir "MERCADO LIVRE" para "MERCADO LIVRE - CASACO" numa fatura faz a parcela seguinte vir já corrigida.
+- [ ] Dar o lembrete "CASACO" à parcela 1/6 de "MERCADO LIVRE" faz a parcela 2/6 vir com o mesmo lembrete, e a descrição da fatura continua a original.
 - [ ] Uma compra dividida 70/30 com o Diego e outra 100% do Diego aparecem na tela do Diego com os valores corretos. O PDF e o texto de WhatsApp mostram esses itens, o total e a chave Pix.
 - [ ] O link de consulta do Diego mostra só os itens dele no período, deixa de funcionar depois de revogado e após 30 dias, e não exibe nenhum dado do Mário.
 - [ ] Uma conta com vencimento amanhã e sem pagamento gera push e e-mail hoje às 8h e de novo amanhã às 8h. Depois de registrar o pagamento, não há novo aviso.

@@ -113,7 +113,7 @@ function GerirCategorias({ regras, onFechar }: { regras: RegraDb[]; onFechar: ()
         <button onClick={() => rodar(async () => { if (nova.trim()) { ok(await supabase.from('categories').insert({ nome: nova.trim() })); setNova(''); await recarregar(); } })}>Adicionar</button>
       </div>
       <h2>Regras (estabelecimento contém → categoria)</h2>
-      <p className="sub">Toda correção de categoria marcada com “lembrar” na revisão vira uma regra aqui.</p>
+      <p className="sub">Regras usadas para sugerir a categoria na revisão das faturas.</p>
       {rs.map((r) => (
         <div className="linha entre" key={r.id}>
           <span className="grow">{r.padrao}</span><span>{c.categorias.find((k) => k.id === r.category_id)?.nome}</span>

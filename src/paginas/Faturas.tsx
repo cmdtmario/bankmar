@@ -109,7 +109,7 @@ function ColarTexto({ cartao, venc, onFechar, onPronto }: { cartao: Cartao; venc
   );
 }
 
-interface Tx { id: string; data_compra: string | null; descricao: string; descricao_original: string | null; parcela_atual: number | null; parcelas_total: number | null; valor: number; category_id: string | null; split_rule: RegraDivisao; conferido: boolean; situacao: string }
+interface Tx { id: string; purchase_id: string | null; data_compra: string | null; descricao: string; descricao_original: string | null; parcela_atual: number | null; parcelas_total: number | null; valor: number; category_id: string | null; split_rule: RegraDivisao; conferido: boolean; situacao: string }
 
 /** Lançamentos já gravados: edição de descrição, categoria, divisão e conferência. */
 function Lancamentos({ cartao, invoiceId, onFechar }: { cartao: Cartao; invoiceId: string; onFechar: () => void }) {
@@ -125,7 +125,8 @@ function Lancamentos({ cartao, invoiceId, onFechar }: { cartao: Cartao; invoiceI
       {!txs ? <Carregando /> : txs.map((t) => (
         <div key={t.id} className="linha entre" style={{ borderBottom: '1px solid var(--linha)', padding: '6px 0' }}>
           <div className="grow">
-            {t.descricao}{t.parcela_atual ? ` (${t.parcela_atual}/${t.parcelas_total})` : ''}
+            {t.descricao_original ?? t.descricao}{t.parcela_atual ? ` (${t.parcela_atual}/${t.parcelas_total})` : ''}
+            {t.descricao_original && t.descricao !== t.descricao_original && <div className="sub">📝 {t.descricao}</div>}
             <div className="sub">{dataBR(t.data_compra)} · {c.categorias.find((k) => k.id === t.category_id)?.nome ?? 'sem categoria'} · {rotuloDivisao(t.split_rule, c)}{t.situacao !== 'real' ? ` · ${t.situacao}` : ''}{t.conferido ? ' · ✓' : ''}</div>
           </div>
           <span className="num">{brl(Number(t.valor))}</span>
@@ -146,7 +147,8 @@ function EditarTx({ t, onFechar, onSalvo }: { t: Tx; onFechar: () => void; onSal
   return (
     <Modal titulo="Editar lançamento" onFechar={onFechar}>
       <div className="campos">
-        <label>Descrição<input value={f.descricao} onChange={(e) => setF({ ...f, descricao: e.target.value })} /></label>
+        <label>Descrição da fatura<input value={t.descricao_original ?? t.descricao} disabled /></label>
+        <label>Lembrete (opcional)<input value={t.descricao_original && f.descricao === t.descricao_original ? '' : f.descricao} onChange={(e) => setF({ ...f, descricao: e.target.value })} /></label>
         <label>Data<input value={data} onChange={(e) => setData(e.target.value)} placeholder="dd/mm/aaaa" /></label>
         <label>Valor<input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} /></label>
         <label>Categoria<select value={f.category_id ?? ''} onChange={(e) => setF({ ...f, category_id: e.target.value || null })}>
@@ -159,7 +161,13 @@ function EditarTx({ t, onFechar, onSalvo }: { t: Tx; onFechar: () => void; onSal
       <div className="linha">
         <button className="pri" disabled={ocupado} onClick={() => rodar(async () => {
           if (contemNumeroCartao(f.descricao)) throw new Error('A descrição parece conter um número de cartão.');
-          ok(await supabase.from('transactions').update({ descricao: f.descricao, data_compra: data ? isoDeBR(data) : null, valor: numeroDe(valor) ?? 0, category_id: f.category_id, split_rule: f.split_rule, conferido: f.conferido }).eq('id', t.id));
+          ok(await supabase.from('transactions').update({ descricao: f.descricao.trim() || t.descricao_original || t.descricao, data_compra: data ? isoDeBR(data) : null, valor: numeroDe(valor) ?? 0, category_id: f.category_id, split_rule: f.split_rule, conferido: f.conferido }).eq('id', t.id));
+          // parcelas: lembrete, categoria e divisão valem para as parcelas previstas da mesma compra
+          if (t.purchase_id) {
+            const desc = f.descricao.trim() || t.descricao_original || t.descricao;
+            ok(await supabase.from('purchases').update({ descricao: desc, category_id: f.category_id, split_rule: f.split_rule }).eq('id', t.purchase_id));
+            ok(await supabase.from('transactions').update({ descricao: desc, category_id: f.category_id, split_rule: f.split_rule }).eq('purchase_id', t.purchase_id).eq('situacao', 'projetada'));
+          }
           onSalvo();
         })}>Salvar</button>
         <button className="perigo" onClick={() => rodar(async () => { if (confirm('Excluir este lançamento?')) { ok(await supabase.from('transactions').delete().eq('id', t.id)); onSalvo(); } })}>Excluir</button>

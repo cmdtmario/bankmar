@@ -9,7 +9,8 @@ import { brl, competenciaDe, dataBR, isoDeBR, nomeMes } from '../lib/formato';
 import { Carregando, EditorDivisao, Erro, Modal, divisaoValida, numeroDe, rotuloDivisao, useAcao, useCadastros } from '../ui/comum';
 import type { Importacao } from './Faturas';
 
-interface Linha extends LinhaPlanejada { lembrar: boolean; conferido: boolean; k: number }
+// A descrição do banco (descricao_original) fica congelada; descricaoFinal é o lembrete amigável (vazio = usa a do banco).
+interface Linha extends LinhaPlanejada { manual: boolean; conferido: boolean; k: number }
 
 export function Revisao({ imp, onFechar, onConfirmada }: { imp: Importacao; onFechar: () => void; onConfirmada: (comp: string) => void }) {
   const { c } = useCadastros();
@@ -29,14 +30,13 @@ export function Revisao({ imp, onFechar, onConfirmada }: { imp: Importacao; onFe
     rodar(async () => {
       const inv = ok(await supabase.from('invoices').select('id, confirmada').eq('card_id', imp.cartao.id).eq('competencia', comp).maybeSingle()) as { id: string; confirmada: boolean } | null;
       setDuplicada(Boolean(inv?.confirmada));
-      const [compras, projecoes, aprendidas, regras] = await Promise.all([
+      const [compras, projecoes, regras] = await Promise.all([
         supabase.from('purchases').select('*').eq('card_id', imp.cartao.id),
         inv ? supabase.from('transactions').select('id, purchase_id, parcela_atual, valor, descricao').eq('invoice_id', inv.id).eq('situacao', 'projetada') : Promise.resolve({ data: [], error: null }),
-        supabase.from('learned_rules').select('*'),
         supabase.from('category_rules').select('*'),
       ]);
-      const plano = planejarImportacao(imp.lida.linhas, ok(projecoes) as Projecao[], (ok(compras) as Compra[]).map((x) => ({ ...x, valor_parcela: Number(x.valor_parcela) })), ok(aprendidas) as RegraAprendida[], ok(regras) as RegraCategoria[]);
-      setLinhas(plano.linhas.map((l, k) => ({ ...l, lembrar: false, conferido: false, k })));
+      const plano = planejarImportacao(imp.lida.linhas, ok(projecoes) as Projecao[], (ok(compras) as Compra[]).map((x) => ({ ...x, valor_parcela: Number(x.valor_parcela) })), [] as RegraAprendida[], ok(regras) as RegraCategoria[]); // regras aprendidas desativadas a pedido do Mário
+      setLinhas(plano.linhas.map((l, k) => ({ ...l, manual: false, conferido: false, k })));
       setNaoEnc(plano.naoEncontradas.map((p) => ({ ...p, acao: 'manter' })));
     });
   }, [comp]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -49,15 +49,18 @@ export function Revisao({ imp, onFechar, onConfirmada }: { imp: Importacao; onFe
   const atualizar = (l: Linha) => setLinhas((ls) => ls!.map((x) => (x.k === l.k ? l : x)));
 
   const confirmar = () => rodar(async () => {
-    for (const l of linhas!) if (contemNumeroCartao(l.descricaoFinal)) throw new Error(`A descrição "${l.descricaoFinal}" parece conter um número de cartão.`);
+    for (const l of linhas!) {
+      if (!l.descricao_original.trim()) throw new Error('Há lançamento manual sem descrição.');
+      if (contemNumeroCartao(l.descricaoFinal) || contemNumeroCartao(l.descricao_original)) throw new Error(`A descrição "${l.descricaoFinal}" parece conter um número de cartão.`);
+    }
     const payload = {
       card_id: imp.cartao.id, competencia: comp, vencimento: venc || null, total_impresso: esperado, origem: imp.origem,
       arquivo_nome: imp.arquivo, justificativa: conf.ok ? null : justificativa, substituir, avisos: imp.avisos,
       nao_encontradas: naoEnc.map((p) => ({ id: p.id, acao: p.acao })),
       linhas: linhas!.map((l) => ({
-        data: l.data, descricao_original: l.descricao_original, descricao: l.descricaoFinal, chave: chaveEstabelecimento(l.descricao_original),
+        data: l.data, descricao_original: l.descricao_original, descricao: l.descricaoFinal.trim() || l.descricao_original, chave: chaveEstabelecimento(l.descricao_original),
         parcela_atual: l.parcelaAtual, parcelas_total: l.parcelasTotal, valor: l.valor, category_id: l.category_id,
-        split_rule: l.split_rule, conferido: l.conferido, purchase_id: l.purchase_id, projecao_id: l.projecao_id, lembrar: l.lembrar,
+        split_rule: l.split_rule, conferido: l.conferido, purchase_id: l.purchase_id, projecao_id: l.projecao_id, lembrar: false,
       })),
     };
     const { error } = await supabase.rpc('confirmar_fatura', { p: payload });
@@ -68,7 +71,7 @@ export function Revisao({ imp, onFechar, onConfirmada }: { imp: Importacao; onFe
     onConfirmada(comp!);
   });
 
-  const novaLinha = () => setLinhas((ls) => [...(ls ?? []), { data: null, descricao: '', descricao_original: '', descricaoFinal: '', parcelaAtual: null, parcelasTotal: null, valor: 0, category_id: null, split_rule: { tipo: 'mario' }, purchase_id: null, projecao_id: null, origemSugestao: 'nenhuma', lembrar: false, conferido: true, k: Date.now() }]);
+  const novaLinha = () => setLinhas((ls) => [...(ls ?? []), { data: null, descricao: '', descricao_original: '', descricaoFinal: '', parcelaAtual: null, parcelasTotal: null, valor: 0, category_id: null, split_rule: { tipo: 'mario' }, purchase_id: null, projecao_id: null, origemSugestao: 'nenhuma', manual: true, conferido: true, k: Date.now() }]);
 
   return (
     <Modal titulo={`Revisão — ${imp.cartao.apelido}`} onFechar={onFechar}>
@@ -104,21 +107,21 @@ export function Revisao({ imp, onFechar, onConfirmada }: { imp: Importacao; onFe
                     <td><input type="checkbox" checked={l.conferido} onChange={(e) => atualizar({ ...l, conferido: e.target.checked })} aria-label="Conferido" /></td>
                     <td className="sub">{dataBR(l.data)}</td>
                     <td>
-                      <input value={l.descricaoFinal} onChange={(e) => atualizar({ ...l, descricaoFinal: e.target.value, descricao_original: l.descricao_original || e.target.value, lembrar: true })} style={{ width: '100%', minWidth: 160 }} />
-                      <div className="sub">{l.parcelaAtual ? `parcela ${l.parcelaAtual}/${l.parcelasTotal} · ` : ''}{l.descricao_original !== l.descricaoFinal && l.descricao_original ? `banco: ${l.descricao_original} · ` : ''}{l.origemSugestao !== 'nenhuma' ? `sugestão: ${l.origemSugestao}` : ''}{l.projecao_id ? ' · substitui parcela prevista' : ''}</div>
+                      {l.manual
+                        ? <input value={l.descricao_original} placeholder="descrição" onChange={(e) => atualizar({ ...l, descricao_original: e.target.value })} style={{ width: '100%', minWidth: 160 }} />
+                        : <div title="Descrição da fatura (não editável)">{l.descricao_original}</div>}
+                      <input value={l.descricaoFinal === l.descricao_original ? '' : l.descricaoFinal} placeholder="lembrete (opcional)" onChange={(e) => atualizar({ ...l, descricaoFinal: e.target.value })} style={{ width: '100%', minWidth: 160, marginTop: 4 }} aria-label="Lembrete" />
+                      <div className="sub">{l.parcelaAtual ? `parcela ${l.parcelaAtual}/${l.parcelasTotal} · ` : ''}{l.origemSugestao === 'parcela anterior' ? 'dados da parcela anterior' : l.origemSugestao === 'regra de categoria' ? 'categoria sugerida' : ''}{l.projecao_id ? ' · substitui parcela prevista' : ''}</div>
                     </td>
                     <td className="num" style={{ color: l.valor < 0 ? 'var(--ok)' : undefined }}>{brl(l.valor)}</td>
                     <td>
-                      <select value={l.category_id ?? ''} onChange={(e) => atualizar({ ...l, category_id: e.target.value || null, lembrar: true })} aria-label="Categoria">
+                      <select value={l.category_id ?? ''} onChange={(e) => atualizar({ ...l, category_id: e.target.value || null })} aria-label="Categoria">
                         <option value="">—</option>{c.categorias.filter((k) => k.ativo).map((k) => <option key={k.id} value={k.id}>{k.nome}</option>)}
                       </select>
                       <div className="sub" style={{ color: divisaoValida(l.valor, l.split_rule) ? undefined : 'var(--erro)' }}>{rotuloDivisao(l.split_rule, c)}</div>
                     </td>
                     <td>
                       <button onClick={() => setEditando(l)}>Editar</button>
-                      <label style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }} title="Lembrar descrição, categoria e divisão para as próximas faturas">
-                        <input type="checkbox" checked={l.lembrar} onChange={(e) => atualizar({ ...l, lembrar: e.target.checked })} /> lembrar
-                      </label>
                     </td>
                   </tr>
                 ))}
@@ -164,7 +167,10 @@ function EditarLinha({ l, onFechar, onSalvar }: { l: Linha; onFechar: () => void
   return (
     <Modal titulo="Lançamento" onFechar={onFechar}>
       <div className="campos">
-        <label>Descrição<input value={f.descricaoFinal} onChange={(e) => setF({ ...f, descricaoFinal: e.target.value })} /></label>
+        {f.manual
+          ? <label>Descrição<input value={f.descricao_original} onChange={(e) => setF({ ...f, descricao_original: e.target.value })} /></label>
+          : <label>Descrição da fatura<input value={f.descricao_original} disabled /></label>}
+        <label>Lembrete (opcional)<input value={f.descricaoFinal === f.descricao_original ? '' : f.descricaoFinal} onChange={(e) => setF({ ...f, descricaoFinal: e.target.value })} /></label>
         <label>Data<input value={data} onChange={(e) => setData(e.target.value)} placeholder="dd/mm/aaaa" /></label>
         <label>Valor<input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} /></label>
         <label>Parcela atual<input type="number" value={f.parcelaAtual ?? ''} onChange={(e) => setF({ ...f, parcelaAtual: e.target.value ? Number(e.target.value) : null })} /></label>
@@ -174,9 +180,8 @@ function EditarLinha({ l, onFechar, onSalvar }: { l: Linha; onFechar: () => void
       </div>
       <h2>Divisão</h2>
       <EditorDivisao valor={v} regra={f.split_rule} onChange={(r: RegraDivisao) => setF({ ...f, split_rule: r })} />
-      <button className="pri" disabled={Boolean(erroDiv) || !f.descricaoFinal.trim()} onClick={() => onSalvar({
-        ...f, valor: v, data: data ? isoDeBR(data) : null, lembrar: true,
-        descricao_original: f.descricao_original || f.descricaoFinal,
+      <button className="pri" disabled={Boolean(erroDiv) || !f.descricao_original.trim()} onClick={() => onSalvar({
+        ...f, valor: v, data: data ? isoDeBR(data) : null,
         parcelaAtual: f.parcelaAtual && f.parcelasTotal && f.parcelasTotal > 1 ? f.parcelaAtual : null,
         parcelasTotal: f.parcelaAtual && f.parcelasTotal && f.parcelasTotal > 1 ? f.parcelasTotal : null,
       })}>Aplicar</button>
