@@ -141,3 +141,8 @@ label:has(> .botao-arquivo):focus-within .botao-arquivo { outline: 2px solid var
   .venc .num { grid-area: v; }
   .venc button { grid-area: b; justify-self: end; }
 }
+/* Áreas seguras (notch / barra de gestos) e conteúdo nunca escondido pela barra inferior */
+main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+nav.abas { padding-bottom: env(safe-area-inset-bottom); }
+header.topo { padding-top: max(6px, env(safe-area-inset-top)); }
+nav.abas a:active { opacity: .75; }

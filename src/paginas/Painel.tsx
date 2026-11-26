@@ -9,8 +9,9 @@ import { pctBR, brl, dataBR, competenciaDe, hojeBrasilia, nomeMes, somaMeses } f
 import { Contador, Esqueleto, Mostrador, Sequencia } from '../ui/animacao';
 import { Erro, useAcao } from '../ui/comum';
 import { FormPagamento } from './Mes';
+import { TEMA } from '../ui/tema';
 
-const PALETA = ['#f3d891', '#d4ab5c', '#a9792f', '#cbbfa6', '#7d6a4a', '#5c5345'];
+const PALETA = TEMA.serie;
 const brlCurto = (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }));
 const mesCurto = (c: string) => new Date(c + 'T12:00:00Z').toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' }).replace('.', '');
 
@@ -136,13 +137,13 @@ export function Painel() {
               <ResponsiveContainer>
                 <ComposedChart data={d.serie} margin={{ top: 8, right: 4, left: -6, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="barraOuro" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f3d891" /><stop offset="100%" stopColor="#9c7330" /></linearGradient>
+                    <linearGradient id="barraOuro" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={TEMA.ouroClaro} /><stop offset="100%" stopColor={TEMA.ouroEscuro} /></linearGradient>
                   </defs>
-                  <XAxis dataKey="comp" tickFormatter={mesCurto} tick={{ fill: '#a39a88', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={brlCurto} tick={{ fill: '#a39a88', fontSize: 11 }} axisLine={false} tickLine={false} width={64} />
+                  <XAxis dataKey="comp" tickFormatter={mesCurto} tick={{ fill: TEMA.textoSuave, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={brlCurto} tick={{ fill: TEMA.textoSuave, fontSize: 11 }} axisLine={false} tickLine={false} width={64} />
                   <Tooltip content={<DicaGrafico />} cursor={{ fill: 'rgba(212,171,92,.08)' }} />
                   <Bar dataKey="gasto" name="Meu gasto" fill="url(#barraOuro)" radius={[4, 4, 0, 0]} isAnimationActive={!reduzir} onClick={(x) => { const c = (x as { payload?: { comp?: string } }).payload?.comp; if (c) setComp(c); }} cursor="pointer" />
-                  <Line dataKey="renda" name="Renda" stroke="#8fa3b8" strokeWidth={2} dot={false} connectNulls isAnimationActive={!reduzir} />
+                  <Line dataKey="renda" name="Renda" stroke={TEMA.renda} strokeWidth={2} dot={false} connectNulls isAnimationActive={!reduzir} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -172,10 +173,10 @@ export function Painel() {
               <ResponsiveContainer>
                 <BarChart data={d.cartoes} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
                   <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="nome" width={120} tick={{ fill: '#ece4d2', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="nome" width={120} tick={{ fill: TEMA.texto, fontSize: 11 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<DicaGrafico />} cursor={{ fill: 'rgba(212,171,92,.08)' }} />
-                  <Bar dataKey="mario" name="Meu" stackId="a" fill="#d4ab5c" isAnimationActive={!reduzir} />
-                  <Bar dataKey={(x: { total: number; mario: number }) => Math.max(0, x.total - x.mario)} name="Dos outros" stackId="a" fill="#4a3f2c" radius={[0, 4, 4, 0]} isAnimationActive={!reduzir} />
+                  <Bar dataKey="mario" name="Meu" stackId="a" fill={TEMA.ouro} isAnimationActive={!reduzir} />
+                  <Bar dataKey={(x: { total: number; mario: number }) => Math.max(0, x.total - x.mario)} name="Dos outros" stackId="a" fill={TEMA.marca} radius={[0, 4, 4, 0]} isAnimationActive={!reduzir} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -46,6 +46,11 @@ Em seguida, use **Deploys → Trigger deploy**.
 2. Em **Mais → Importar planilha 2026**, envie a planilha, confira os totais e grave.
 3. Em **Mais → Cartões**, complete o final e o dia de vencimento de cada cartão e escolha o leitor (Itaú, Caixa ou Outro).
 
+## Fluxo de publicação (economiza créditos do Netlify)
+- Todo desenvolvimento vai para a branch **`dev`**. O Netlify publica só a `main`, então nada em `dev` gasta deploy.
+- A cada push em `dev`, o GitHub roda os testes e o **teste de telas** (prints em Actions → Telas → artefato).
+- Só quando o Mário aprovar, `dev` é juntada na `main` e o Netlify publica.
+
 ## Desenvolvimento
 ```
 npm ci

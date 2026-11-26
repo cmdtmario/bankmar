@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { animate, motion, useReducedMotion } from 'framer-motion';
 import { brl } from '../lib/formato';
+import { TEMA } from './tema';
 
 /** Valor em R$ que "conta" até o número final (respeita reduzir movimento). */
 export function Contador({ valor, duracao = 0.9, formatar = brl }: { valor: number; duracao?: number; formatar?: (v: number) => string }) {
@@ -31,18 +32,18 @@ export function Mostrador({ pct, children }: { pct: number | null; children: Rea
       <svg viewBox="0 0 220 220" aria-hidden="true">
         <defs>
           <linearGradient id="ouro" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#f3d891" />
-            <stop offset="55%" stopColor="#d4ab5c" />
-            <stop offset="100%" stopColor="#9c7330" />
+            <stop offset="0%" stopColor={TEMA.ouroClaro} />
+            <stop offset="55%" stopColor={TEMA.ouro} />
+            <stop offset="100%" stopColor={TEMA.ouroEscuro} />
           </linearGradient>
         </defs>
         <g transform="rotate(135 110 110)">
           {marcas.map((i) => {
             const a = (i / (marcas.length - 1)) * arco * 2 * Math.PI;
             const r1 = 104, r2 = i % 3 === 0 ? 98 : 101;
-            return <line key={i} x1={110 + r1 * Math.cos(a)} y1={110 + r1 * Math.sin(a)} x2={110 + r2 * Math.cos(a)} y2={110 + r2 * Math.sin(a)} stroke="#4a3f2c" strokeWidth={i % 3 === 0 ? 1.4 : 0.8} />;
+            return <line key={i} x1={110 + r1 * Math.cos(a)} y1={110 + r1 * Math.sin(a)} x2={110 + r2 * Math.cos(a)} y2={110 + r2 * Math.sin(a)} stroke={TEMA.marca} strokeWidth={i % 3 === 0 ? 1.4 : 0.8} />;
           })}
-          <circle cx="110" cy="110" r={raio} fill="none" stroke="#211d16" strokeWidth="10" strokeDasharray={`${circ * arco} ${circ}`} strokeLinecap="round" />
+          <circle cx="110" cy="110" r={raio} fill="none" stroke={TEMA.trilho} strokeWidth="10" strokeDasharray={`${circ * arco} ${circ}`} strokeLinecap="round" />
           <motion.circle
             cx="110" cy="110" r={raio} fill="none" stroke={excedeu ? 'var(--erro)' : 'url(#ouro)'} strokeWidth="10" strokeLinecap="round"
             strokeDasharray={`${circ * arco} ${circ}`}

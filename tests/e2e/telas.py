@@ -137,7 +137,7 @@ def responder(route):
 
 
 TELAS = ["/", "/mes", "/faturas", "/contas", "/pessoas", "/pessoas/p1", "/categorias", "/mais"]
-TAMANHOS = {"celular": (375, 812), "desktop": (1280, 900)}
+TAMANHOS = {"celular": (375, 812), "deitado": (812, 375), "tablet": (768, 1024), "desktop": (1280, 900)}
 
 
 def main():
