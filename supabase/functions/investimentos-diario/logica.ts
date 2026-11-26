@@ -34,3 +34,39 @@ export function valorDaFoto(pos: Pos[], precos: Map<string, number>, manuais: Ma
   }
   return [...out.values()];
 }
+
+/** Data de Brasília (AAAA-MM-DD) de um instante em segundos. */
+export function dataBrasilia(seg: number): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(seg * 1000));
+}
+
+export interface CotacaoAoVivo { codigo: string; preco: number; anterior: number | null; hora: string; dias: { data: string; preco: number }[] }
+
+/** Lê a resposta do gráfico do Yahoo: preço atual, fechamento do pregão anterior e os fechamentos diários. */
+export function lerYahoo(codigo: string, j: unknown): CotacaoAoVivo | null {
+  const r = (j as { chart?: { result?: { meta?: Record<string, number>; timestamp?: number[]; indicators?: { quote?: { close?: (number | null)[] }[] } }[] } })?.chart?.result?.[0];
+  const meta = r?.meta;
+  const preco = meta?.regularMarketPrice;
+  if (typeof preco !== 'number' || !(preco > 0)) return null;
+  const hoje = dataBrasilia(meta!.regularMarketTime ?? Date.now() / 1000);
+  const ts = r?.timestamp ?? [];
+  const fech = r?.indicators?.quote?.[0]?.close ?? [];
+  const porDia = new Map<string, number>();
+  ts.forEach((t, i) => { const v = fech[i]; if (typeof v === 'number' && v > 0) porDia.set(dataBrasilia(t), Math.round(v * 1e4) / 1e4); });
+  porDia.set(hoje, preco);
+  const dias = [...porDia.entries()].map(([data, p]) => ({ data, preco: p })).sort((a, b) => a.data.localeCompare(b.data));
+  const antes = dias.filter((d) => d.data < hoje);
+  const anterior = antes.length ? antes[antes.length - 1].preco : (typeof meta!.chartPreviousClose === 'number' ? meta!.chartPreviousClose : null);
+  return { codigo, preco, anterior, hora: new Date((meta!.regularMarketTime ?? Date.now() / 1000) * 1000).toISOString(), dias };
+}
+
+/** Pregão da B3 (com margem para o leilão de fechamento): seg–sex, 10h00–18h15 de Brasília. */
+export function pregaoAberto(agora: Date): boolean {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(agora);
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? '';
+  if (['Sat', 'Sun'].includes(g('weekday'))) return false;
+  const min = Number(g('hour')) * 60 + Number(g('minute'));
+  return min >= 600 && min <= 1095;
+}
+
+export const INDICES: Record<string, string> = { IBOV: '^BVSP', DOLAR: 'USDBRL=X', EURO: 'EURBRL=X' };

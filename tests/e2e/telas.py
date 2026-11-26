@@ -113,10 +113,17 @@ DADOS.update({
     "inv_proventos_receber": [{"id": 1, "codigo": "MXRF11", "produto": "MXRF11", "tipo": "Rendimento", "evento": "RENDIMENTO", "previsao": (HOJE + timedelta(days=4)).isoformat(), "instituicao": "XP", "quantidade": 900, "valor": 90.0},
                               {"id": 2, "codigo": "PETR4", "produto": "PETR4", "tipo": "Dividendo", "evento": "DIVIDENDO", "previsao": (HOJE + timedelta(days=18)).isoformat(), "instituicao": "INTER", "quantidade": 200, "valor": 128.4}],
     "inv_ajustes": [{"codigo": "HGLG11", "preco_medio": None, "preco_alvo": 175, "origem": None, "observacao": None}],
-    "inv_cotacoes": [], "inv_instituicoes": [],
+    "inv_instituicoes": [],
     "inv_saldos_manuais": [{"id": "s1", "instituicao": "Previdência Exemplo", "produto": "PGBL Exemplo", "classe": "previdencia", "competencia": COMP.isoformat(), "saldo": 42000, "aportes": 500}],
     "inv_fotos": [{"competencia": mes(HOJE, -i).isoformat(), "valor": 118000 - i * 2100} for i in range(1, 9)],
 })
+import math
+_VAR = {"PETR4": 0.018, "ITSA4": -0.006, "HGLG11": -0.011, "MXRF11": 0.003, "BOVA11": 0.009, "WEGE3": -0.024, "IBOV": 0.0072, "DOLAR": -0.0041, "EURO": 0.0012}
+_BASE = {k: pr for k, c, n, q, pr, inst in _POS} | {"IBOV": 158200.0, "DOLAR": 5.42, "EURO": 6.21}
+DADOS["inv_cotacoes"] = [{"codigo": k, "data": (HOJE - timedelta(days=d)).isoformat(), "preco": round(v * (1 + 0.08 * math.sin(d / 23 + len(k)) - 0.0003 * d), 2)}
+                         for k, v in _BASE.items() for d in range(1, 400) if (HOJE - timedelta(days=d)).weekday() < 5]
+DADOS["inv_cotacoes_recentes"] = [{"codigo": k, "data": HOJE.isoformat(), "preco": v, "anterior": round(v / (1 + _VAR[k]), 4), "atualizado_em": HOJE.isoformat() + "T13:30:00Z", "data_anterior": None} for k, v in _BASE.items()]
+VIVO = {"atualizadas": len(_BASE), "falhas": [], "fotos": 0, "cotacoes": [{"codigo": x["codigo"], "preco": x["preco"], "anterior": x["anterior"], "hora": x["atualizado_em"]} for x in DADOS["inv_cotacoes_recentes"]]}
 
 
 def responder(route):
@@ -124,6 +131,8 @@ def responder(route):
     u = urlparse(req.url)
     if "/auth/v1/" in u.path:
         return route.fulfill(status=200, content_type="application/json", body=json.dumps(SESSAO["user"]))
+    if "/functions/v1/" in u.path:
+        return route.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body=json.dumps(VIVO))
     m = re.search(r"/rest/v1/(rpc/)?([a-z_]+)", u.path)
     if not m:
         return route.fulfill(status=404, body="{}")
@@ -213,9 +222,18 @@ def main():
                 pg.screenshot(path=str(SAIDA / f"{nome_tam}-4{n}-investimentos-{aba.lower()}.png"), full_page=True)
             pg.get_by_role("tab", name="Ativos").click()
             assert pg.get_by_text("sem preço médio").first.is_visible(), "WEGE3 sem histórico deveria pedir preço médio"
-            pg.locator(".ativo-linha").first.click()
+            assert pg.get_by_text("Sua carteira hoje").is_visible(), "faixa do mercado ausente"
+            if nome_tam == "desktop":
+                pg.locator(".ativo-envoltorio", has_text="HGLG11").evaluate("e => e.scrollIntoView({block: 'center'})")
+                pg.locator(".ativo-envoltorio", has_text="HGLG11").locator(".ativo-linha").hover()
+                pg.wait_for_timeout(300)
+                assert pg.locator(".ativo-envoltorio", has_text="HGLG11").locator(".visao").is_visible(), "resumo de venda não aparece ao passar o mouse"
+                pg.screenshot(path=str(SAIDA / f"{nome_tam}-44-investimentos-hover.png"))
+            pg.locator(".ativo-envoltorio", has_text="HGLG11").locator(".ativo-linha").click()
             assert pg.get_by_role("dialog").is_visible()
-            pg.screenshot(path=str(SAIDA / f"{nome_tam}-45-investimentos-editar.png"))
+            pg.wait_for_timeout(800)
+            assert pg.get_by_text("Preço de equilíbrio").is_visible()
+            pg.screenshot(path=str(SAIDA / f"{nome_tam}-45-investimentos-editar.png"), full_page=True)
             pg.keyboard.press("Escape")
             # link público
             pg2 = nav.new_context(viewport={"width": w, "height": h}, reduced_motion="reduce").new_page()

@@ -3,6 +3,9 @@ import { supabase, ok } from '../supabase';
 import type { ArquivoB3, Movimentacao, Negociacao, Posicao, Classe } from './b3';
 import { calcularCustos, consolidar, criarAgrupador, extrairProventos, type Ajuste, type Ativo, type Provento, type CustoAtivo } from './carteira';
 import { somaCentavos } from '../formato';
+import type { Cotacao } from './indicadores';
+
+export const INDICES = ['IBOV', 'DOLAR', 'EURO'] as const;
 
 async function todas<T>(tabela: string, ordem: string, filtro?: (q: ReturnType<typeof supabase.from>) => unknown): Promise<T[]> {
   const out: T[] = [];
@@ -62,6 +65,9 @@ export interface Carteira {
   totalManual: number;
   agrupar: (i: string) => string;
   temDados: boolean;
+  cotacoes: Map<string, Cotacao>;
+  /** Recalcula os ativos com cotações novas (ao vivo), sem ir ao banco. */
+  comCotacoes: (novas: Map<string, Cotacao>) => Carteira;
 }
 
 export async function carregarCarteira(): Promise<Carteira> {
@@ -72,7 +78,7 @@ export async function carregarCarteira(): Promise<Carteira> {
     todas<Movimentacao>('inv_movimentacoes', 'id'),
     dataPosicao ? todas<Posicao & { valor_aplicado: number | null }>('inv_posicoes', 'id', (q) => (q as unknown as { eq: (a: string, b: string) => unknown }).eq('data_ref', dataPosicao)) : Promise.resolve([]),
     supabase.from('inv_ajustes').select('*'),
-    supabase.from('inv_cotacoes').select('codigo, data, preco').order('data', { ascending: false }).limit(3000),
+    supabase.from('inv_cotacoes_recentes').select('*'),
     supabase.from('inv_proventos_receber').select('*').order('previsao'),
     supabase.from('inv_saldos_manuais').select('*').order('competencia', { ascending: false }),
     supabase.from('inv_fotos').select('competencia, valor'),
@@ -82,33 +88,54 @@ export async function carregarCarteira(): Promise<Carteira> {
   const n2 = negs.map((x) => num(x, ['quantidade', 'preco', 'valor']));
   const m2 = movs.map((x) => num(x, ['quantidade', 'preco', 'valor']));
   const p2 = posicoes.map((x) => ({ ...num(x, ['quantidade', 'preco', 'valor', 'valor_aplicado']), valorAplicado: x.valor_aplicado != null ? Number(x.valor_aplicado) : null })) as Posicao[];
-  const cotacoes = new Map<string, { preco: number; data: string }>();
-  for (const c of ok(cot) as { codigo: string; data: string; preco: number }[]) if (!cotacoes.has(c.codigo)) cotacoes.set(c.codigo, { preco: Number(c.preco), data: c.data });
+  const cotacoes = new Map<string, Cotacao>();
+  for (const c of ok(cot) as { codigo: string; data: string; preco: number; anterior: number | null; atualizado_em: string }[])
+    cotacoes.set(c.codigo, { preco: Number(c.preco), anterior: c.anterior != null ? Number(c.anterior) : null, data: c.data, hora: c.atualizado_em });
   const agrupar = criarAgrupador(ok(inst) as { nome_original: string; grupo: string }[]);
   const custos = calcularCustos(n2, m2);
   const proventos = extrairProventos(m2);
-  const ativos = consolidar({ posicoes: p2, custos, ajustes: (ok(ajustes) as Ajuste[]).map((a) => ({ ...a, preco_medio: a.preco_medio != null ? Number(a.preco_medio) : null, preco_alvo: a.preco_alvo != null ? Number(a.preco_alvo) : null })), proventos, cotacoes, dataPosicao, agrupar });
+  const ajustesN = (ok(ajustes) as Ajuste[]).map((a) => ({ ...a, preco_medio: a.preco_medio != null ? Number(a.preco_medio) : null, preco_alvo: a.preco_alvo != null ? Number(a.preco_alvo) : null }));
+  const ativos = consolidar({ posicoes: p2, custos, ajustes: ajustesN, proventos, cotacoes, dataPosicao, agrupar });
   const ultimos = new Map<string, SaldoManual>();
   for (const s of ok(manuais) as SaldoManual[]) { const k = `${s.instituicao}|${s.produto}`; if (!ultimos.has(k)) ultimos.set(k, { ...s, saldo: Number(s.saldo) }); }
   const porMes = new Map<string, number>();
   for (const f of ok(fotos) as { competencia: string; valor: number }[]) porMes.set(f.competencia, somaCentavos([porMes.get(f.competencia) ?? 0, Number(f.valor)]));
   const totalB3 = somaCentavos(ativos.map((a) => a.mercado));
   const totalManual = somaCentavos([...ultimos.values()].map((s) => s.saldo));
-  return {
+  const carteira: Carteira = {
+    cotacoes, comCotacoes: (novas) => {
+      const todas = new Map([...carteira.cotacoes, ...novas]);
+      const at = consolidar({ posicoes: p2, custos, ajustes: ajustesN, proventos, cotacoes: todas, dataPosicao, agrupar });
+      return { ...carteira, cotacoes: todas, ativos: at, totalB3: somaCentavos(at.map((a) => a.mercado)) };
+    },
     ativos, manuais: [...ultimos.values()], proventos, custos,
     aReceber: (ok(receber) as ProventoReceberDb[]).map((r) => ({ ...r, valor: Number(r.valor) })),
     fotos: [...porMes.entries()].map(([competencia, valor]) => ({ competencia, valor })).sort((a, b) => a.competencia.localeCompare(b.competencia)),
     dataPosicao, totalB3, totalManual, agrupar, temDados: Boolean(dataPosicao || negs.length),
   };
+  return carteira;
 }
 
 export async function salvarAjuste(codigo: string, campos: { preco_medio?: number | null; preco_alvo?: number | null; origem?: string }) {
   ok(await supabase.from('inv_ajustes').upsert({ codigo, ...campos }, { onConflict: 'user_id,codigo' }));
 }
 
-/** RF-62: pede à função do servidor para atualizar as cotações agora. */
-export async function atualizarCotacoes() {
-  const { data, error } = await supabase.functions.invoke('investimentos-diario', { body: { acao: 'cotacoes' } });
-  if (error) throw new Error('Não foi possível atualizar as cotações agora. A atualização automática roda todo dia útil às 18h30.');
-  return data as { atualizadas: number; falhas: string[] };
+/** RF-62: cotação ao vivo (atraso de ~15 min). Também grava o dia no histórico. */
+export async function cotacoesAoVivo(): Promise<{ cotacoes: Map<string, Cotacao>; falhas: string[] }> {
+  const { data, error } = await supabase.functions.invoke('investimentos-diario', { body: { acao: 'ao_vivo' } });
+  if (error) throw new Error('Não foi possível buscar as cotações agora. Os valores mostrados são os da última atualização.');
+  const r = data as { cotacoes: { codigo: string; preco: number; anterior: number | null; hora: string }[]; falhas: string[] };
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  return { cotacoes: new Map(r.cotacoes.map((c) => [c.codigo, { preco: c.preco, anterior: c.anterior, data: hoje, hora: c.hora }])), falhas: r.falhas };
+}
+
+/** Fechamentos diários de um ativo (até 2 anos). Se ainda não houver histórico guardado, busca e guarda. */
+export async function historicoDe(codigo: string): Promise<{ data: string; preco: number }[]> {
+  const ler = async () => (ok(await supabase.from('inv_cotacoes').select('data, preco').eq('codigo', codigo).order('data').limit(800)) as { data: string; preco: number }[]).map((x) => ({ data: x.data, preco: Number(x.preco) }));
+  let h = await ler();
+  if (h.length < 30) {
+    await supabase.functions.invoke('investimentos-diario', { body: { acao: 'historico', codigos: [codigo] } });
+    h = await ler();
+  }
+  return h;
 }

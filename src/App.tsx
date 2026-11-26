@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { CalendarDays, CreditCard, Home, KeyRound, LineChart, LogOut, Menu, Users } from 'lucide-react';
 import { Painel } from './paginas/Painel';
@@ -16,6 +16,9 @@ const Investimentos = lazy(() => import('./paginas/Investimentos').then((m) => (
 const Pessoas = lazy(() => import('./paginas/Pessoas').then((m) => ({ default: m.Pessoas })));
 const PessoaDetalhe = lazy(() => import('./paginas/Pessoas').then((m) => ({ default: m.PessoaDetalhe })));
 import { CadastrosProvider, Carregando } from './ui/comum';
+
+// O arquivo de demonstração abre sem servidor, então usa rotas com #.
+const Roteador = import.meta.env.VITE_DEMO ? HashRouter : BrowserRouter;
 
 // RF-03: só leva ao cofre; o sistema não lê nem guarda nada dele.
 export const URL_COFRE = 'https://vault.bitwarden.com/';
@@ -38,8 +41,9 @@ function Area() {
   if (estado === 'fora') return loc.pathname === '/' ? <Login onPronto={() => setEstado('dentro')} /> : <Navigate to="/" replace />;
   return (
     <CadastrosProvider>
+      {import.meta.env.VITE_DEMO && <div className="faixa-demo">Demonstração com dados fictícios · nada é salvo</div>}
       <header className="topo">
-        <div className="marca"><img src="/monograma.png" alt="" /><span>BankMaR</span></div>
+        <div className="marca"><img src={`${import.meta.env.BASE_URL}monograma.png`} alt="" /><span>BankMaR</span></div>
         <div className="linha">
           <a className="botao-link" href={URL_COFRE} target="_blank" rel="noopener noreferrer"><KeyRound size={17} aria-hidden="true" /> Cofre</a>
           <button className="icone" onClick={() => supabase.auth.signOut()} aria-label="Sair"><LogOut size={18} /></button>
@@ -79,12 +83,12 @@ export default function App() {
   if (!configurado) return <main><div className="erro">Faltam VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nas variáveis de ambiente.</div></main>;
   return (
     <MotionConfig reducedMotion="user">
-    <BrowserRouter>
+    <Roteador>
       <Routes>
         <Route path="/c/:token" element={<Suspense fallback={null}><Compartilhado /></Suspense>} />
         <Route path="*" element={<Area />} />
       </Routes>
-    </BrowserRouter>
+    </Roteador>
     </MotionConfig>
   );
 }

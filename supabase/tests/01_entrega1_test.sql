@@ -187,5 +187,10 @@ insert into inv_negociacoes (data, tipo, codigo, quantidade, preco, valor, chave
 insert into inv_negociacoes (data, tipo, codigo, quantidade, preco, valor, chave) values ('2024-01-01','Compra','PETR4',10,30,300,'k1')
   on conflict (user_id, chave) do nothing;
 select pg_temp.ok((select count(*) from inv_negociacoes) = 1, 'reimportar a mesma negociação não duplica (RF-61)');
+insert into inv_cotacoes (codigo, data, preco) values ('PETR4','2026-11-24',30),('PETR4','2026-11-25',31),('PETR4','2026-11-26',32.5),('VALE3','2026-11-26',60);
+select pg_temp.ok((select anterior from inv_cotacoes_recentes where codigo='PETR4') = 31 and (select preco from inv_cotacoes_recentes where codigo='PETR4') = 32.5, 'último preço e fechamento anterior');
+select pg_temp.ok((select anterior from inv_cotacoes_recentes where codigo='VALE3') is null, 'sem dia anterior fica vazio');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000b","aal":"aal2"}', false);
+select pg_temp.ok((select count(*) from inv_cotacoes_recentes) = 0, 'cotações de outro usuário não aparecem');
 reset role;
 select 'TODOS OS TESTES SQL PASSARAM' as resultado;

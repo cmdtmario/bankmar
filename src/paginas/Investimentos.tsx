@@ -1,10 +1,12 @@
 // Entrega 3 — Investimentos (RF-60 a RF-69).
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { AlertTriangle, CalendarClock, FileUp, RefreshCw, Target } from 'lucide-react';
+import { Area, AreaChart, Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { AlertTriangle, CalendarClock, FileUp, RefreshCw, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import { supabase, ok } from '../lib/supabase';
-import { carregarCarteira, importarArquivoB3, salvarAjuste, atualizarCotacoes, type Carteira } from '../lib/investimentos/dados';
+import { carregarCarteira, importarArquivoB3, salvarAjuste, cotacoesAoVivo, historicoDe, INDICES, type Carteira } from '../lib/investimentos/dados';
+import { calcular, resumoDecisao, type Indicadores } from '../lib/investimentos/indicadores';
+import { pregaoAberto } from '../../supabase/functions/investimentos-diario/logica';
 import { lerArquivoB3, ArquivoB3Error, type Classe } from '../lib/investimentos/b3';
 import { NOME_CLASSE, type Ativo } from '../lib/investimentos/carteira';
 import { lerPlanilhaAntiga, conciliar, type Divergencia } from '../lib/investimentos/planilhaAntiga';
@@ -27,38 +29,108 @@ function Dica({ active, payload, label }: { active?: boolean; payload?: { name: 
   );
 }
 
+const NOME_INDICE: Record<string, string> = { IBOV: 'Ibovespa', DOLAR: 'Dólar', EURO: 'Euro' };
+const NEGOCIAVEL = ['acao', 'bdr', 'etf', 'fii'];
+const sinalPct = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${pctBR(Math.abs(v))}`;
+const sinalBrl = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${brl(Math.abs(v))}`;
+const classeVar = (v: number | null | undefined) => (v == null || Math.abs(v) < 1e-9 ? '' : v > 0 ? 'pos' : 'neg');
+const horaBR = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '');
+
+/** Indicadores de todos os ativos, calculados uma vez por carteira. */
+function useIndicadores(c: Carteira | null) {
+  return useMemo(() => {
+    const m = new Map<string, Indicadores>();
+    if (!c) return m;
+    const total = somaCentavos([c.totalB3, c.totalManual]);
+    for (const a of c.ativos) m.set(a.codigo, calcular(a, c.proventos, NEGOCIAVEL.includes(a.classe) ? c.cotacoes.get(a.codigo) : undefined, total));
+    return m;
+  }, [c]);
+}
+
 export function Investimentos() {
   const [aba, setAba] = useState<Aba>('resumo');
   const [c, setC] = useState<Carteira | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [vivo, setVivo] = useState<{ hora: string; aberto: boolean } | null>(null);
   const { erro, ocupado, rodar } = useAcao();
-  const carregar = () => rodar(async () => setC(await carregarCarteira()));
+  const base = useRef<Carteira | null>(null);
+  const carregar = () => rodar(async () => { const k = await carregarCarteira(); base.current = k; setC(k); });
+  const aoVivo = useCallback(async (avisar: boolean) => {
+    if (!base.current?.temDados) return;
+    try {
+      const r = await cotacoesAoVivo();
+      base.current = base.current.comCotacoes(r.cotacoes);
+      setC(base.current);
+      setVivo({ hora: new Date().toISOString(), aberto: pregaoAberto(new Date()) });
+      if (avisar) setMsg(r.falhas.length ? `Sem cotação agora para: ${r.falhas.join(', ')}. Ficou o último preço guardado.` : null);
+    } catch (e) { if (avisar) setMsg(e instanceof Error ? e.message : String(e)); }
+  }, []);
   useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (c && !c.temDados) setAba('importar'); }, [c]);
+  useEffect(() => { if (c && !c.temDados) setAba('importar'); }, [c?.temDados]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Ao vivo: busca ao abrir e a cada 5 min durante o pregão, só com a tela visível.
+  const temDados = Boolean(c?.temDados);
+  useEffect(() => {
+    if (!temDados) return;
+    aoVivo(false);
+    const t = setInterval(() => { if (document.visibilityState === 'visible' && pregaoAberto(new Date())) aoVivo(false); }, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [temDados, aoVivo]);
+  const ind = useIndicadores(c);
 
   return (
     <main>
       <div className="linha entre">
         <h1 style={{ margin: '8px 0' }}>Investimentos</h1>
         {c?.temDados && (
-          <button disabled={ocupado} onClick={() => rodar(async () => { const r = await atualizarCotacoes(); setMsg(`${r.atualizadas} cotações atualizadas${r.falhas.length ? `; sem cotação: ${r.falhas.join(', ')}` : ''}.`); await carregar(); })}>
+          <button disabled={ocupado} aria-label="Atualizar cotações" onClick={() => rodar(() => aoVivo(true))}>
             <RefreshCw size={16} aria-hidden="true" /> Cotações
           </button>
         )}
       </div>
-      {c?.dataPosicao && <p className="sub" style={{ marginTop: 0 }}>Posição da B3 de {dataBR(c.dataPosicao)}</p>}
+      {c?.temDados && <FaixaMercado c={c} ind={ind} vivo={vivo} />}
       <div className="segmentos" role="tablist">
         {ABAS.map(([k, t]) => <button key={k} role="tab" aria-selected={aba === k} className={aba === k ? 'ativo' : ''} onClick={() => setAba(k)}>{t}</button>)}
       </div>
       <Erro msg={erro} />
-      {msg && <div className="okmsg">{msg}</div>}
-      {!c ? <Esqueleto altura={320} /> : aba === 'resumo' ? <Resumo c={c} /> : aba === 'ativos' ? <Ativos c={c} onSalvo={carregar} /> : aba === 'proventos' ? <Proventos c={c} /> : <Importar c={c} onImportado={carregar} />}
+      {msg && <div className="aviso">{msg}</div>}
+      {!c ? <Esqueleto altura={320} /> : aba === 'resumo' ? <Resumo c={c} ind={ind} /> : aba === 'ativos' ? <Ativos c={c} ind={ind} onSalvo={carregar} /> : aba === 'proventos' ? <Proventos c={c} /> : <Importar c={c} onImportado={carregar} />}
     </main>
   );
 }
 
+function FaixaMercado({ c, ind, vivo }: { c: Carteira; ind: Map<string, Indicadores>; vivo: { hora: string; aberto: boolean } | null }) {
+  const hoje = somaCentavos([...ind.values()].map((i) => i.varDiaValor ?? 0));
+  const antes = c.totalB3 - hoje;
+  const ultima = [...c.cotacoes.values()].map((x) => x.hora ?? '').sort().pop();
+  return (
+    <section className="faixa" aria-label="Mercado hoje">
+      <div className="faixa-item">
+        <span className="sub">Sua carteira hoje</span>
+        <strong className={classeVar(hoje)}>{sinalBrl(hoje)}</strong>
+        <span className={`sub ${classeVar(hoje)}`}>{antes > 0 ? `${hoje / antes > 0 ? '+' : hoje / antes < 0 ? '−' : ''}${pctBR(Math.abs(hoje / antes), 2)}` : '—'}</span>
+      </div>
+      {INDICES.map((k) => {
+        const x = c.cotacoes.get(k);
+        const v = x?.anterior ? x.preco / x.anterior - 1 : null;
+        return (
+          <div className="faixa-item" key={k}>
+            <span className="sub">{NOME_INDICE[k]}</span>
+            <strong>{x ? (k === 'IBOV' ? x.preco.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : brl(x.preco)) : '—'}</strong>
+            <span className={`sub ${classeVar(v)}`}>{v != null ? sinalPct(v) : ''}</span>
+          </div>
+        );
+      })}
+      <p className="sub faixa-status">
+        {vivo?.aberto ? <><span className="pulso" aria-hidden="true" /> Pregão aberto · atualizado às {horaBR(vivo.hora)} (atraso de ~15 min)</>
+          : `Pregão fechado · variação do último pregão${ultima ? ` · cotações de ${horaBR(ultima)}` : ''}`}
+        {c.dataPosicao && ` · posição B3 de ${dataBR(c.dataPosicao)}`}
+      </p>
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
-function Resumo({ c }: { c: Carteira }) {
+function Resumo({ c, ind }: { c: Carteira; ind: Map<string, Indicadores> }) {
   const reduzir = useReducedMotion();
   const total = somaCentavos([c.totalB3, c.totalManual]);
   const comCusto = c.ativos.filter((a) => a.investido != null);
@@ -89,6 +161,8 @@ function Resumo({ c }: { c: Carteira }) {
           <div><dt>Proventos em 12 meses</dt><dd><Contador valor={prov12} /></dd></div>
         </dl>
       </section>
+
+      <AltasBaixas c={c} ind={ind} />
 
       {c.aReceber.length > 0 && (
         <section className="card">
@@ -166,16 +240,47 @@ function Resumo({ c }: { c: Carteira }) {
   );
 }
 
+function AltasBaixas({ c, ind }: { c: Carteira; ind: Map<string, Indicadores> }) {
+  const lista = c.ativos.filter((a) => ind.get(a.codigo)?.varDia != null).map((a) => ({ a, i: ind.get(a.codigo)! }));
+  if (!lista.length) return null;
+  const ord = [...lista].sort((x, y) => y.i.varDia! - x.i.varDia!);
+  const altas = ord.filter((x) => x.i.varDia! > 0).slice(0, 3);
+  const baixas = ord.filter((x) => x.i.varDia! < 0).reverse().slice(0, 3);
+  const linha = ({ a, i }: (typeof lista)[number]) => (
+    <li key={a.codigo} className="linha entre" style={{ padding: '6px 0' }}>
+      <span><strong>{a.codigo}</strong> <span className="sub">{brl(c.cotacoes.get(a.codigo)?.preco ?? a.preco)}</span></span>
+      <span className={`num ${classeVar(i.varDia)}`}>{sinalPct(i.varDia!)} <span className="sub">{sinalBrl(i.varDiaValor ?? 0)}</span></span>
+    </li>
+  );
+  return (
+    <div className="grade-2">
+      <section className="card"><h2 style={{ marginTop: 0 }}><TrendingUp size={18} aria-hidden="true" /> Maiores altas do dia</h2>{altas.length ? <ul className="lista-simples">{altas.map(linha)}</ul> : <p className="sub">Nenhum ativo subiu.</p>}</section>
+      <section className="card"><h2 style={{ marginTop: 0 }}><TrendingDown size={18} aria-hidden="true" /> Maiores quedas do dia</h2>{baixas.length ? <ul className="lista-simples">{baixas.map(linha)}</ul> : <p className="sub">Nenhum ativo caiu.</p>}</section>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
-function Ativos({ c, onSalvo }: { c: Carteira; onSalvo: () => void }) {
+function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores>; onSalvo: () => void }) {
   const classesPresentes = [...new Set(c.ativos.map((a) => a.classe))];
   const [filtro, setFiltro] = useState<Classe | 'todas' | 'incompletos'>('todas');
-  const [ordem, setOrdem] = useState<'valor' | 'resultado' | 'proventos'>('valor');
+  const [ordem, setOrdem] = useState<'valor' | 'dia' | 'resultado' | 'total' | 'proventos' | 'dy'>('valor');
   const [edit, setEdit] = useState<Ativo | null>(null);
-  const negociavel = (a: Ativo) => ['acao', 'bdr', 'etf', 'fii'].includes(a.classe);
+  const negociavel = (a: Ativo) => NEGOCIAVEL.includes(a.classe);
+  const chave = (a: Ativo): number => {
+    const i = ind.get(a.codigo);
+    switch (ordem) {
+      case 'dia': return i?.varDia ?? -9;
+      case 'resultado': return i?.varEntrada ?? a.resultadoPct ?? -9;
+      case 'total': return i?.retornoTotalPct ?? -9;
+      case 'proventos': return i?.proventosTotal ?? 0;
+      case 'dy': return i?.dy12m ?? -9;
+      default: return a.mercado;
+    }
+  };
   const lista = c.ativos
     .filter((a) => filtro === 'todas' || (filtro === 'incompletos' ? negociavel(a) && a.pm == null : a.classe === filtro))
-    .sort((a, b) => (ordem === 'valor' ? b.mercado - a.mercado : ordem === 'resultado' ? (b.resultadoPct ?? -9) - (a.resultadoPct ?? -9) : b.proventos - a.proventos));
+    .sort((x, y) => chave(y) - chave(x));
   const incompletos = c.ativos.filter((a) => negociavel(a) && a.pm == null).length;
   return (
     <>
@@ -189,56 +294,133 @@ function Ativos({ c, onSalvo }: { c: Carteira; onSalvo: () => void }) {
       </div>
       <div className="linha" style={{ margin: '6px 0 10px' }}>
         <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>Ordenar por
-          <select value={ordem} onChange={(e) => setOrdem(e.target.value as typeof ordem)}><option value="valor">valor</option><option value="resultado">resultado %</option><option value="proventos">proventos</option></select>
+          <select value={ordem} onChange={(e) => setOrdem(e.target.value as typeof ordem)}>
+            <option value="valor">valor</option><option value="dia">variação do dia</option><option value="resultado">variação desde a compra</option>
+            <option value="total">retorno com proventos</option><option value="proventos">proventos recebidos</option><option value="dy">dividend yield 12m</option>
+          </select>
         </label>
       </div>
-      {lista.map((a) => (
-        <button key={a.codigo} className="card ativo-linha" onClick={() => setEdit(a)}>
-          <div className="grow" style={{ textAlign: 'left' }}>
-            <strong>{a.codigo}</strong> <span className="sub">{a.nome.slice(0, 40)}</span>
-            <div className="sub">
-              {negociavel(a) ? `${a.quantidade.toLocaleString('pt-BR')} × ${a.preco != null ? brl(a.preco) : '—'}` : NOME_CLASSE[a.classe]}
-              {a.pm != null && negociavel(a) && ` · PM ${brl(a.pm)}${a.origemPm !== 'histórico B3' ? ` (${a.origemPm})` : ''}`}
-              {negociavel(a) && a.pm == null && <span style={{ color: 'var(--alerta)' }}> · sem preço médio</span>}
-              {a.proventos ? ` · proventos ${brl(a.proventos)}` : ''}
-              {a.alvo != null && <span className={a.atingiuAlvo ? 'pos' : ''}> · <Target size={12} aria-hidden="true" /> alvo {brl(a.alvo)}{a.atingiuAlvo ? ' atingido' : ''}</span>}
+      <p className="sub dica-hover">Passe o mouse sobre um ativo para ver o resumo de venda; clique para ver os detalhes e o gráfico.</p>
+      {lista.map((a) => {
+        const i = ind.get(a.codigo)!;
+        const preco = negociavel(a) ? (c.cotacoes.get(a.codigo)?.preco ?? a.preco) : null;
+        return (
+          <div key={a.codigo} className="ativo-envoltorio">
+            <button className="card ativo-linha" onClick={() => setEdit(a)} aria-describedby={`vis-${a.codigo}`}>
+              <div className="grow" style={{ textAlign: 'left', minWidth: 0 }}>
+                <strong>{a.codigo}</strong> <span className="sub">{a.nome.slice(0, 34)}</span>
+                <div className="sub">
+                  {negociavel(a) ? `${a.quantidade.toLocaleString('pt-BR')} × ${preco != null ? brl(preco) : '—'}` : NOME_CLASSE[a.classe]}
+                  {a.pm != null && negociavel(a) && ` · PM ${brl(a.pm)}`}
+                  {negociavel(a) && a.pm == null && <span style={{ color: 'var(--alerta)' }}> · sem preço médio</span>}
+                  {i.proventosTotal ? ` · proventos ${brl(i.proventosTotal)}` : ''}
+                  {a.alvo != null && <span className={a.atingiuAlvo ? 'pos' : ''}> · <Target size={12} aria-hidden="true" /> alvo {brl(a.alvo)}{a.atingiuAlvo ? ' atingido' : ''}</span>}
+                </div>
+              </div>
+              <div className="num">
+                <strong>{brl(a.mercado)}</strong>
+                {i.varDia != null && <div className={`etiqueta-var ${classeVar(i.varDia)}`}>hoje {sinalPct(i.varDia)}</div>}
+                {i.varEntrada != null ? <div className={classeVar(i.varEntrada)} style={{ fontSize: '.82rem' }}>desde a compra {sinalPct(i.varEntrada)}</div>
+                  : a.resultadoPct != null && <div className={classeVar(a.resultadoPct)} style={{ fontSize: '.82rem' }}>{sinalPct(a.resultadoPct)}</div>}
+              </div>
+            </button>
+            <div className="visao" id={`vis-${a.codigo}`} role="tooltip">
+              {resumoDecisao(a, i, preco).map((t, k) => <p key={k}>{t}</p>)}
             </div>
           </div>
-          <div className="num">
-            <strong>{brl(a.mercado)}</strong>
-            {a.resultadoPct != null && <div className={a.resultadoPct < 0 ? 'neg' : 'pos'} style={{ fontSize: '.85rem' }}>{a.resultadoPct > 0 ? '+' : ''}{pctBR(a.resultadoPct)}</div>}
-          </div>
-        </button>
-      ))}
-      {edit && <EditarAtivo a={edit} c={c} onFechar={() => setEdit(null)} onSalvo={() => { setEdit(null); onSalvo(); }} />}
+        );
+      })}
+      {edit && <EditarAtivo a={edit} c={c} i={ind.get(edit.codigo)!} onFechar={() => setEdit(null)} onSalvo={() => { setEdit(null); onSalvo(); }} />}
     </>
   );
 }
 
-function EditarAtivo({ a, c, onFechar, onSalvo }: { a: Ativo; c: Carteira; onFechar: () => void; onSalvo: () => void }) {
+function Grafico({ a, c, i }: { a: Ativo; c: Carteira; i: Indicadores }) {
+  const reduzir = useReducedMotion();
+  const [hist, setHist] = useState<{ data: string; preco: number }[] | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  const [periodo, setPeriodo] = useState<30 | 180 | 365 | 730>(365);
+  useEffect(() => { historicoDe(a.codigo).then(setHist).catch(() => setFalhou(true)); }, [a.codigo]);
+  if (falhou) return <p className="sub">Não foi possível carregar o histórico de preços agora.</p>;
+  if (!hist) return <Esqueleto altura={180} />;
+  const atual = c.cotacoes.get(a.codigo);
+  const serie = [...hist.filter((h) => h.data !== atual?.data), ...(atual ? [{ data: atual.data, preco: atual.preco }] : [])].sort((x, y) => x.data.localeCompare(y.data));
+  const corte = new Date(Date.now() - periodo * 864e5).toISOString().slice(0, 10);
+  const dados = serie.filter((h) => h.data >= corte);
+  if (dados.length < 2) return <p className="sub">Ainda não há histórico de preços. Ele é guardado todo dia útil a partir de agora.</p>;
+  const ano = serie.filter((h) => h.data >= new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10)).map((h) => h.preco);
+  const linhas: [number | null | undefined, string, string][] = [[a.pm, 'Preço médio', TEMA.renda], [i.equilibrio !== a.pm ? i.equilibrio : null, 'Equilíbrio c/ proventos', TEMA.ok], [a.alvo, 'Alvo', TEMA.alerta]];
+  const vals = [...dados.map((d) => d.preco), ...linhas.map(([v]) => v).filter((v): v is number => v != null)];
+  return (
+    <>
+      <div className="chips" style={{ marginTop: 4 }}>
+        {([[30, '1 mês'], [180, '6 meses'], [365, '1 ano'], [730, '2 anos']] as const).map(([d, t]) => <button key={d} className={periodo === d ? 'ativo' : ''} onClick={() => setPeriodo(d)}>{t}</button>)}
+      </div>
+      <div style={{ height: 190 }}>
+        <ResponsiveContainer>
+          <LineChart data={dados} margin={{ top: 8, right: 6, left: -8, bottom: 0 }}>
+            <XAxis dataKey="data" tickFormatter={(v: string) => `${v.slice(8, 10)}/${v.slice(5, 7)}`} tick={{ fill: TEMA.textoSuave, fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={24} />
+            <YAxis domain={[Math.min(...vals) * 0.97, Math.max(...vals) * 1.03]} tickFormatter={(v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: v >= 100 ? 0 : 2 })} tick={{ fill: TEMA.textoSuave, fontSize: 10 }} axisLine={false} tickLine={false} width={48} />
+            <Tooltip content={<DicaPreco />} />
+            {linhas.map(([v, nome, cor]) => v != null && <ReferenceLine key={nome} y={v} stroke={cor} strokeDasharray="4 4" />)}
+            <Line dataKey="preco" name="Preço" stroke={TEMA.ouro} dot={false} strokeWidth={2} isAnimationActive={!reduzir} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <ul className="legenda" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        <li style={{ border: 0 }}><span className="ponto" style={{ background: TEMA.ouro }} />Preço</li>
+        {linhas.filter(([v]) => v != null).map(([v, nome, cor]) => <li key={nome} style={{ border: 0 }}><span className="ponto" style={{ background: cor }} />{nome} {brl(v!)}</li>)}
+      </ul>
+      {ano.length > 5 && <p className="sub">Faixa de 12 meses: {brl(Math.min(...ano))} a {brl(Math.max(...ano))}.</p>}
+    </>
+  );
+}
+
+function DicaPreco({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return <div className="dica"><div className="sub">{dataBR(label ?? '')}</div><strong>{brl(payload[0].value)}</strong></div>;
+}
+
+function EditarAtivo({ a, c, i, onFechar, onSalvo }: { a: Ativo; c: Carteira; i: Indicadores; onFechar: () => void; onSalvo: () => void }) {
   const [pm, setPm] = useState(a.origemPm && a.origemPm !== 'histórico B3' && a.pm != null ? String(a.pm).replace('.', ',') : '');
   const [alvo, setAlvo] = useState(a.alvo != null ? String(a.alvo).replace('.', ',') : '');
   const { erro, ocupado, rodar } = useAcao();
   const hist = c.custos.get(a.codigo);
-  const prov = c.proventos.filter((p) => p.codigo === a.codigo);
+  const neg = NEGOCIAVEL.includes(a.classe);
+  const preco = neg ? (c.cotacoes.get(a.codigo)?.preco ?? a.preco) : null;
+  const num = (v: number | null, f: (x: number) => string) => (v == null ? '—' : f(v));
   return (
     <Modal titulo={`${a.codigo} — ${a.nome.slice(0, 30)}`} onFechar={onFechar}>
-      <dl className="resumo-numeros">
+      <div className="visao-fixa">{resumoDecisao(a, i, preco).map((t, k) => <p key={k}>{t}</p>)}</div>
+      {neg && <Grafico a={a} c={c} i={i} />}
+      <dl className="indicadores">
+        <div><dt>Preço atual</dt><dd>{num(preco, brl)}</dd></div>
+        <div><dt>Hoje</dt><dd className={classeVar(i.varDia)}>{num(i.varDia, sinalPct)}</dd></div>
+        <div><dt>Preço médio{a.origemPm && a.origemPm !== 'histórico B3' ? ` (${a.origemPm})` : ''}</dt><dd>{num(a.pm, brl)}</dd></div>
+        <div><dt>Desde a compra</dt><dd className={classeVar(i.varEntrada)}>{num(i.varEntrada, sinalPct)}</dd></div>
         <div><dt>Quantidade (B3)</dt><dd>{a.quantidade.toLocaleString('pt-BR')}</dd></div>
-        <div><dt>Valor</dt><dd>{brl(a.mercado)}</dd></div>
         <div><dt>Investido</dt><dd>{brl(a.investido)}</dd></div>
-        <div><dt>Retorno total (com proventos)</dt><dd className={(a.retornoTotal ?? 0) < 0 ? 'neg' : 'pos'}>{brl(a.retornoTotal)}</dd></div>
+        <div><dt>Valor hoje</dt><dd>{brl(a.mercado)}</dd></div>
+        <div><dt>Resultado do preço</dt><dd className={classeVar(i.resultadoPreco)}>{num(i.resultadoPreco, sinalBrl)}</dd></div>
+        <div><dt>Proventos recebidos</dt><dd>{brl(i.proventosTotal)}</dd></div>
+        <div><dt>Retorno com proventos</dt><dd className={classeVar(i.retornoTotal)}>{num(i.retornoTotal, sinalBrl)}{i.retornoTotalPct != null ? ` (${sinalPct(i.retornoTotalPct)})` : ''}</dd></div>
+        <div><dt>Preço de equilíbrio</dt><dd>{num(i.equilibrio, brl)}</dd></div>
+        <div><dt>Proventos 12 meses</dt><dd>{brl(i.proventos12m)}</dd></div>
+        <div><dt>Dividend yield 12m</dt><dd>{num(i.dy12m, (v) => pctBR(v))}</dd></div>
+        <div><dt>Yield sobre o custo</dt><dd>{num(i.yoc, (v) => pctBR(v))}</dd></div>
+        <div><dt>Peso na carteira</dt><dd>{pctBR(i.peso)}</dd></div>
+        {i.numeroMagico != null && <div><dt>Número mágico</dt><dd>{i.numeroMagico.toLocaleString('pt-BR')} cotas</dd></div>}
       </dl>
       <p className="sub">
         Histórico da B3: {hist ? `${hist.quantidade.toLocaleString('pt-BR')} cotas calculadas, PM ${hist.pm != null ? brl(hist.pm) : '—'}, ${hist.vendas.length} venda(s)` : 'sem negociações'}.
         {hist?.eventosSemCusto.length ? ` Eventos sem custo: ${hist.eventosSemCusto.join(', ')}.` : ''}
         {!a.custoCompleto && ' O histórico não bate com a posição atual, então o PM calculado não é usado.'}
+        {i.numeroMagico != null && ' Número mágico: quantas cotas você precisa para que um mês de rendimento compre uma cota nova.'}
       </p>
       <div className="campos">
         <label>Preço médio manual (vazio = usar o histórico)<input inputMode="decimal" value={pm} onChange={(e) => setPm(e.target.value)} /></label>
         <label>Preço-alvo de saída (opcional)<input inputMode="decimal" value={alvo} onChange={(e) => setAlvo(e.target.value)} /></label>
       </div>
-      <p className="sub">{prov.length} provento(s) recebido(s), total {brl(somaCentavos(prov.map((p) => p.valor)))}.</p>
       <Erro msg={erro} />
       <button className="pri" disabled={ocupado} onClick={() => rodar(async () => { await salvarAjuste(a.codigo, { preco_medio: numeroDe(pm), preco_alvo: numeroDe(alvo), origem: numeroDe(pm) != null ? 'manual' : null as unknown as string }); onSalvo(); })}>Salvar</button>
     </Modal>

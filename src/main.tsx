@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
-createRoot(document.getElementById('root')!).render(
+const preparar = import.meta.env.VITE_DEMO ? import('./demo/servidor').then((m) => m.instalarDemo()) : Promise.resolve();
+
+preparar.then(() => createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>,
-)
+))

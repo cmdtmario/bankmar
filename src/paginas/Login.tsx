@@ -47,7 +47,7 @@ export function Login({ onPronto }: { onPronto: () => void }) {
 
   return (
     <main style={{ maxWidth: 420 }}>
-      <img className="login-logo" src="/logo.jpg" alt="BankMaR — Private Banking, Gestão Patrimonial" />
+      <img className="login-logo" src={`${import.meta.env.BASE_URL}logo.jpg`} alt="BankMaR — Private Banking, Gestão Patrimonial" />
       <div className="card">
         {etapa === 'senha' && (
           <form onSubmit={(e) => { e.preventDefault(); entrar(); }} className="campos" style={{ gridTemplateColumns: '1fr' }}>

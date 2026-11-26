@@ -10,3 +10,5 @@ data/
 *.xlsx
 *.pdf
 tests/e2e/prints/
+dist-demo/
+src/demo/dados.json

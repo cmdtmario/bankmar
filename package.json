@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "e2e:server": "VITE_SUPABASE_URL=https://demo.supabase.co VITE_SUPABASE_ANON_KEY=demo vite --port 5179 --strictPort",
-    "e2e": "python3 tests/e2e/with_server.py --server 'npm run e2e:server' --port 5179 --timeout 60 -- python3 tests/e2e/telas.py"
+    "e2e": "python3 tests/e2e/with_server.py --server 'npm run e2e:server' --port 5179 --timeout 60 -- python3 tests/e2e/telas.py",
+    "build:demo": "node scripts/build-demo.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
@@ -35,6 +36,7 @@
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
     "vite-plugin-pwa": "^2.0.0",
+    "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^5.1.2",
     "workbox-precaching": "^7.4.1"
   }
