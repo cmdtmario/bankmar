@@ -276,3 +276,29 @@ th[aria-sort="ascending"] .cabecalho, th[aria-sort="descending"] .cabecalho { co
 .metricas button { min-height: 34px; font-size: .85rem; padding: 0 9px; }
 .barra.discreta { height: 4px; background: var(--linha); }
 .barra.discreta > div { background: #8a7d66; }
+
+/* Instituições */
+.barra-ferramentas { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; margin-bottom: 6px; }
+.campo-inline { flex-direction: row; align-items: center; gap: 8px; color: var(--sub); }
+.campo-inline select { min-height: 40px; min-width: 150px; }
+.alternador { display: flex; align-items: center; gap: 2px; }
+.alternador .sub { margin-right: 6px; }
+.alternador button { border: 0; background: none; color: var(--sub); min-height: 40px; padding: 0 10px; border-radius: 8px; }
+.alternador button[aria-checked="true"] { color: var(--txt); background: #1d1b18; font-weight: 600; }
+.barra-ferramentas .alerta-linha { margin-left: auto; }
+.resumo-filtro { margin: 4px 0 8px; }
+.onde { color: #b5ad9f; }
+.selo-inst { margin-left: 8px; font-size: .75rem; font-weight: 500; color: #b5ad9f; border: 1px solid var(--linha-forte); border-radius: 6px; padding: 1px 6px; vertical-align: 1px; white-space: nowrap; }
+.razao-cod { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inspetor-sec { font-size: .8rem; font-weight: 500; color: var(--sub); margin: 12px 0 4px; }
+.onde-lista { list-style: none; margin: 0 0 12px; padding: 0; }
+.onde-lista li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--linha); font-size: .9rem; }
+.modal:focus { outline: none; }
+main.largo { max-width: 1320px; }
+.razao-tabela { overflow-x: auto; }
+.razao-tabela th, .razao-tabela td { padding: 9px 6px; font-size: .88rem; }
+.razao-tabela th .cabecalho { padding: 0 6px; }
+.razao-tabela td.num { white-space: nowrap; }
+@media (min-width: 1140px) { .razao-mesa { grid-template-columns: minmax(0, 1fr) 280px; } }
+.razao-tabela thead th { position: static; }
+.inspetor-numeros div { gap: 10px; }

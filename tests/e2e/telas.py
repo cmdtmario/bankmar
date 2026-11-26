@@ -97,7 +97,7 @@ DADOS = {
 }
 
 # Investimentos fictícios (nada do Mario)
-_POS = [("PETR4", "acao", "Petrobras PN", 200, 38.1, "INTER DTVM"), ("ITSA4", "acao", "Itaúsa PN", 500, 11.2, "NU INVEST"),
+_POS = [("PETR4", "acao", "Petrobras PN", 120, 38.1, "INTER DTVM"), ("PETR4", "acao", "Petrobras PN", 80, 38.1, "NU INVEST CORRETORA DE VALORES S.A."), ("ITSA4", "acao", "Itaúsa PN", 500, 11.2, "NU INVEST"),
         ("HGLG11", "fii", "CSHG Logística FII", 40, 158.4, "INTER DTVM"), ("MXRF11", "fii", "Maxi Renda FII", 900, 9.6, "XP INVESTIMENTOS"),
         ("BOVA11", "etf", "iShares Ibovespa", 30, 128.0, "NU INVEST"), ("WEGE3", "acao", "WEG ON", 60, 52.3, "C6 CTVM")]
 DADOS.update({
@@ -106,7 +106,7 @@ DADOS.update({
                     + [{"id": 99, "data_ref": HOJE.isoformat(), "classe": "renda_fixa", "codigo": "CDB-BANCO-X", "produto": "CDB Banco X 110% CDI", "instituicao": "INTER DTVM",
                         "cnpj": None, "isin": None, "emissor": "Banco X", "indexador": "CDI", "vencimento": "2028-05-10", "quantidade": 10, "preco": 1180.5, "valor": 11805, "valor_aplicado": 10000}],
     "inv_negociacoes": [{"id": i, "data": f"2024-0{1 + i % 8}-10", "tipo": "Compra", "mercado": "Mercado à Vista", "instituicao": inst, "codigo": k, "quantidade": q, "preco": pr * 0.85,
-                         "valor": q * pr * 0.85, "chave": f"n{i}"} for i, (k, c, n, q, pr, inst) in enumerate(_POS) if k != "WEGE3"],
+                         "valor": q * pr * 0.85, "chave": f"n{i}"} for i, (k, c, n, q, pr, inst) in enumerate(_POS) if k != "WEGE3" and not (k == "PETR4" and "NU" in inst)] + [{"id": 50, "data": "2024-03-10", "tipo": "Compra", "mercado": "Mercado à Vista", "instituicao": "NU INVEST", "codigo": "PETR4", "quantidade": 80, "preco": 33.0, "valor": 2640.0, "chave": "n50"}],
     "inv_movimentacoes": [{"id": 100 + j, "data": f"{2025 + j // 12}-{1 + j % 12:02d}-15", "entrada": True, "tipo": "Rendimento" if k.endswith("11") else "Dividendo", "produto": k, "codigo": k,
                            "instituicao": "INTER DTVM", "quantidade": None, "preco": None, "valor": v, "chave": f"m{j}{k}"}
                           for j in range(23) for k, v in [("HGLG11", 44.0), ("MXRF11", 90.0)] + ([("PETR4", 140.0)] if j % 3 == 0 else [])],
@@ -235,6 +235,15 @@ def main():
             assert pg.get_by_text("Preço de equilíbrio").is_visible()
             pg.screenshot(path=str(SAIDA / f"{nome_tam}-45-investimentos-editar.png"), full_page=True)
             pg.keyboard.press("Escape")
+            pg.wait_for_timeout(300)
+            pg.locator("select").filter(has_text="Todas").first.select_option("Nubank")
+            pg.wait_for_timeout(300)
+            assert pg.get_by_text("Em Nubank").is_visible(), "filtro por instituição não aplicou"
+            pg.screenshot(path=str(SAIDA / f"{nome_tam}-46-investimentos-nubank.png"), full_page=True)
+            pg.locator("select").filter(has_text="Todas").first.select_option("todas")
+            pg.get_by_role("radio", name="Instituição").click()
+            pg.wait_for_timeout(300)
+            pg.screenshot(path=str(SAIDA / f"{nome_tam}-47-investimentos-por-instituicao.png"), full_page=True)
             # link público
             pg2 = nav.new_context(viewport={"width": w, "height": h}, reduced_motion="reduce").new_page()
             pg2.context.route("https://demo.supabase.co/**", responder)

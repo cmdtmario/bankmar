@@ -106,6 +106,8 @@ export interface Ativo {
   pm: number | null; origemPm: 'histórico B3' | 'ajuste manual' | 'planilha antiga' | null; custoCompleto: boolean;
   investido: number | null; preco: number | null; dataPreco: string | null; mercado: number; resultado: number | null; resultadoPct: number | null;
   proventos: number; retornoTotal: number | null; alvo: number | null; atingiuAlvo: boolean; cnpj: string | null;
+  /** Onde o ativo está custodiado: quantidade e valor em cada instituição (nomes já agrupados). */
+  porInstituicao: { instituicao: string; quantidade: number; valor: number }[];
 }
 
 export function consolidar(p: {
@@ -142,6 +144,13 @@ export function consolidar(p: {
       mercado, resultado, resultadoPct: investido ? resultado! / investido : null, proventos,
       retornoTotal: investido != null ? c2(mercado - investido + proventos) : null,
       alvo, atingiuAlvo: alvo != null && preco != null && preco >= alvo, cnpj: ps[0].cnpj,
+      porInstituicao: [...ps.reduce((m, x) => {
+        const k = p.agrupar(x.instituicao);
+        const v = m.get(k) ?? { instituicao: k, quantidade: 0, valor: 0 };
+        v.quantidade = q6(v.quantidade + x.quantidade);
+        v.valor = c2(v.valor + (negociavel(classe) && preco != null ? preco * x.quantidade : (x.valor ?? 0)));
+        return m.set(k, v);
+      }, new Map<string, { instituicao: string; quantidade: number; valor: number }>()).values()].sort((a, b) => b.valor - a.valor),
     };
   }).sort((a, b) => b.mercado - a.mercado);
 }
@@ -164,4 +173,15 @@ export function criarAgrupador(tabela: { nome_original: string; grupo: string }[
     const p = padrao.find(([r]) => r.test(inst));
     return p ? p[1] : inst;
   };
+}
+
+/** Recorte de um ativo numa instituição: quantidade, valor, custo e resultado só da parte custodiada lá.
+ *  O preço médio é o da carteira inteira (a B3 não informa custo por corretora). */
+export function recortar(a: Ativo, instituicao: string): Ativo | null {
+  const parte = a.porInstituicao.find((x) => x.instituicao === instituicao);
+  if (!parte) return null;
+  const f = a.quantidade ? parte.quantidade / a.quantidade : 0;
+  const investido = a.pm != null ? c2(a.pm * parte.quantidade) : a.investido != null ? c2(a.investido * f) : null;
+  const resultado = investido != null ? c2(parte.valor - investido) : null;
+  return { ...a, quantidade: parte.quantidade, mercado: parte.valor, investido, resultado, resultadoPct: investido ? resultado! / investido : null, instituicoes: [instituicao], porInstituicao: [parte], retornoTotal: null };
 }

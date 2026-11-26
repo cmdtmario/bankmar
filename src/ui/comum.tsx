@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { carregarCadastros, type Cadastros } from '../lib/dados';
@@ -28,9 +28,19 @@ export const Carregando = () => <p className="sub">Carregando…</p>;
 export const Erro = ({ msg }: { msg: string | null }) => (msg ? <div className="erro">{msg}</div> : null);
 
 export function Modal({ titulo, onFechar, children }: { titulo: string; onFechar: () => void; children: ReactNode }) {
+  // Esc fecha a janela (teclado); o foco vai para dentro dela ao abrir.
+  const caixa = useRef<HTMLDivElement>(null);
+  const fechar = useRef(onFechar);
+  fechar.current = onFechar;
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar.current(); };
+    document.addEventListener('keydown', tecla);
+    caixa.current?.focus({ preventScroll: true });
+    return () => document.removeEventListener('keydown', tecla);
+  }, []);
   return (
     <motion.div className="modal-fundo" onClick={onFechar} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
-      <motion.div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={titulo}
+      <motion.div ref={caixa} tabIndex={-1} className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={titulo}
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}>
         <div className="linha entre"><h2 style={{ margin: 0 }}>{titulo}</h2><button className="icone" onClick={onFechar} aria-label="Fechar"><X size={18} /></button></div>
         {children}

@@ -69,3 +69,15 @@ describe.skipIf(!fNeg || !fMov || !fPos)('Arquivos reais da B3', () => {
     expect(totalProv).toBeGreaterThan(1000);
   });
 });
+
+import { recortar } from './carteira';
+describe('Recorte por instituição', () => {
+  it('quantidade, valor e custo só da parte na instituição; PM é o da carteira', () => {
+    const a = { codigo: 'PETR4', classe: 'acao', nome: 'Petrobras', instituicoes: ['Inter', 'Nubank'], quantidade: 200, pm: 30, origemPm: 'histórico B3', custoCompleto: true,
+      investido: 6000, preco: 40, dataPreco: null, mercado: 8000, resultado: 2000, resultadoPct: 1 / 3, proventos: 500, retornoTotal: 2500, alvo: null, atingiuAlvo: false, cnpj: null,
+      porInstituicao: [{ instituicao: 'Inter', quantidade: 120, valor: 4800 }, { instituicao: 'Nubank', quantidade: 80, valor: 3200 }] } as const;
+    const r = recortar(a as never, 'Nubank')!;
+    expect([r.quantidade, r.mercado, r.investido, r.resultado, r.pm]).toEqual([80, 3200, 2400, 800, 30]);
+    expect(recortar(a as never, 'XP')).toBeNull();
+  });
+});

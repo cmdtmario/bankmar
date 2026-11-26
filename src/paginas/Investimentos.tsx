@@ -8,7 +8,7 @@ import { carregarCarteira, importarArquivoB3, salvarAjuste, cotacoesAoVivo, hist
 import { calcular, resumoDecisao, type Indicadores } from '../lib/investimentos/indicadores';
 import { pregaoAberto } from '../../supabase/functions/investimentos-diario/logica';
 import { lerArquivoB3, ArquivoB3Error, type Classe } from '../lib/investimentos/b3';
-import { NOME_CLASSE, type Ativo } from '../lib/investimentos/carteira';
+import { NOME_CLASSE, recortar, type Ativo } from '../lib/investimentos/carteira';
 import { lerPlanilhaAntiga, conciliar, type Divergencia } from '../lib/investimentos/planilhaAntiga';
 import { brl, dataBR, pctBR, somaCentavos, competenciaDe, hojeBrasilia, somaMeses, nomeMes } from '../lib/formato';
 import { Contador, Esqueleto } from '../ui/animacao';
@@ -264,18 +264,55 @@ function AltasBaixas({ c, ind }: { c: Carteira; ind: Map<string, Indicadores> })
 type Metrica = 'dia' | 'compra' | 'total';
 const METRICAS: [Metrica, string][] = [['dia', 'Hoje'], ['compra', 'Desde a compra'], ['total', 'Com proventos']];
 type Coluna = 'ativo' | 'preco' | 'dia' | 'pm' | 'compra' | 'proventos' | 'total' | 'valor' | 'peso';
-const COLUNAS: [Coluna, string][] = [['ativo', 'Ativo'], ['preco', 'Preço'], ['dia', 'Hoje'], ['pm', 'Preço médio'], ['compra', 'Desde a compra'], ['proventos', 'Proventos'], ['total', 'Retorno c/ proventos'], ['valor', 'Valor'], ['peso', 'Peso']];
+const COLUNAS: [Coluna, string][] = [['ativo', 'Ativo'], ['preco', 'Preço'], ['dia', 'Hoje'], ['pm', 'Preço médio'], ['compra', 'Desde a compra'], ['proventos', 'Proventos'], ['total', 'Com proventos'], ['valor', 'Valor'], ['peso', 'Peso']];
+
+interface LinhaAtivo { chave: string; grupo: string; a: Ativo; i: Indicadores }
+
+/** Texto curto de onde o ativo está: "Nubank" ou "Nubank 120 · Inter 80" ou "3 instituições". */
+function ondeEsta(a: Ativo, negociavel: boolean) {
+  const p = a.porInstituicao;
+  if (p.length <= 1) return p[0]?.instituicao ?? '';
+  if (p.length > 2) return `${p.length} instituições`;
+  return p.map((x) => (negociavel ? `${x.instituicao} ${x.quantidade.toLocaleString('pt-BR')}` : x.instituicao)).join(' · ');
+}
 
 function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores>; onSalvo: () => void }) {
   const [filtro, setFiltro] = useState<Classe | 'todas' | 'incompletos'>('todas');
+  const [inst, setInst] = useState<string>('todas');
+  const [agrupar, setAgrupar] = useState<'classe' | 'instituicao'>('classe');
   const [ordem, setOrdem] = useState<{ col: Coluna; desc: boolean }>({ col: 'valor', desc: true });
   const [metrica, setMetrica] = useState<Metrica>('dia');
   const [edit, setEdit] = useState<Ativo | null>(null);
   const [foco, setFoco] = useState<string | null>(null);
   const negociavel = (a: Ativo) => NEGOCIAVEL.includes(a.classe);
   const precoDe = (a: Ativo) => (negociavel(a) ? (c.cotacoes.get(a.codigo)?.preco ?? a.preco) : null);
-  const valorCol = (a: Ativo, col: Coluna): number | string => {
-    const i = ind.get(a.codigo)!;
+  const total = somaCentavos([c.totalB3, c.totalManual]);
+  const instituicoes = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of c.ativos) for (const p of a.porInstituicao) m.set(p.instituicao, (m.get(p.instituicao) ?? 0) + p.valor);
+    return [...m.entries()].sort((x, y) => y[1] - x[1]).map(([k]) => k);
+  }, [c]);
+
+  // Linhas: o ativo inteiro, ou a parte dele em cada instituição (quando filtra ou agrupa por instituição).
+  const linhas = useMemo<LinhaAtivo[]>(() => {
+    const out: LinhaAtivo[] = [];
+    const parte = (a: Ativo, nome: string, grupo: string) => {
+      const r = recortar(a, nome);
+      if (!r) return;
+      const provs = c.proventos.filter((p) => p.codigo === a.codigo && c.agrupar(p.instituicao) === nome);
+      out.push({ chave: `${grupo}|${a.codigo}|${nome}`, grupo, a: r, i: calcular(r, provs, negociavel(a) ? c.cotacoes.get(a.codigo) : undefined, total) });
+    };
+    for (const a of c.ativos) {
+      if (filtro === 'incompletos' ? !(negociavel(a) && a.pm == null) : filtro !== 'todas' && a.classe !== filtro) continue;
+      if (agrupar === 'instituicao') { for (const p of a.porInstituicao) if (inst === 'todas' || p.instituicao === inst) parte(a, p.instituicao, p.instituicao); }
+      else if (inst !== 'todas') parte(a, inst, a.classe);
+      else out.push({ chave: `${a.classe}|${a.codigo}`, grupo: a.classe, a, i: ind.get(a.codigo)! });
+    }
+    return out;
+  }, [c, ind, filtro, inst, agrupar, total]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const valorCol = (l: LinhaAtivo, col: Coluna): number | string => {
+    const { a, i } = l;
     switch (col) {
       case 'ativo': return a.codigo;
       case 'preco': return precoDe(a) ?? -Infinity;
@@ -287,29 +324,43 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
       case 'peso': case 'valor': return a.mercado;
     }
   };
-  const ordenar = (lista: Ativo[]) => [...lista].sort((x, y) => {
+  const ordenar = (ls: LinhaAtivo[]) => [...ls].sort((x, y) => {
     const vx = valorCol(x, ordem.col), vy = valorCol(y, ordem.col);
     const r = typeof vx === 'string' ? vx.localeCompare(String(vy)) : (vx as number) - (vy as number);
     return ordem.desc ? -r : r;
   });
-  const visiveis = c.ativos.filter((a) => filtro === 'todas' || (filtro === 'incompletos' ? negociavel(a) && a.pm == null : a.classe === filtro));
-  const total = somaCentavos([c.totalB3, c.totalManual]);
-  const grupos = [...new Set(visiveis.map((a) => a.classe))]
-    .map((classe) => ({ classe, itens: ordenar(visiveis.filter((a) => a.classe === classe)), valor: somaCentavos(visiveis.filter((a) => a.classe === classe).map((a) => a.mercado)) }))
+  const nomeGrupo = (g: string) => (agrupar === 'classe' ? NOME_CLASSE[g as Classe] : g);
+  const grupos = [...new Set(linhas.map((l) => l.grupo))]
+    .map((g) => { const itens = linhas.filter((l) => l.grupo === g); return { g, itens: ordenar(itens), valor: somaCentavos(itens.map((l) => l.a.mercado)) }; })
     .sort((x, y) => y.valor - x.valor);
+  const totalVisivel = somaCentavos(linhas.map((l) => l.a.mercado));
   const incompletos = c.ativos.filter((a) => negociavel(a) && a.pm == null).length;
   const classes = [...new Set(c.ativos.map((a) => a.classe))];
-  const ativoFoco = c.ativos.find((a) => a.codigo === foco) ?? grupos[0]?.itens[0] ?? null;
+  const linhaFoco = linhas.find((l) => l.chave === foco) ?? grupos[0]?.itens[0] ?? null;
   const clicarCol = (col: Coluna) => setOrdem((o) => ({ col, desc: o.col === col ? !o.desc : col !== 'ativo' }));
-  const metricaDe = (a: Ativo): number | null => { const i = ind.get(a.codigo)!; return metrica === 'dia' ? i.varDia : metrica === 'compra' ? (i.varEntrada ?? a.resultadoPct) : i.retornoTotalPct; };
+  const metricaDe = ({ a, i }: LinhaAtivo): number | null => (metrica === 'dia' ? i.varDia : metrica === 'compra' ? (i.varEntrada ?? a.resultadoPct) : i.retornoTotalPct);
   const pctOuTraco = (v: number | null | undefined) => (v == null ? <span className="vazio-num">—</span> : <span className={classeVar(v)}>{sinalPct(v)}</span>);
+  const detalhe = (l: LinhaAtivo) => {
+    const { a } = l; const neg = negociavel(a);
+    const qtd = neg ? `${a.quantidade.toLocaleString('pt-BR')} ${a.quantidade === 1 ? 'cota' : 'cotas'}` : a.nome.slice(0, 26);
+    const onde = agrupar === 'instituicao' || inst !== 'todas' ? '' : ondeEsta(a, neg);
+    return { qtd, onde };
+  };
+  const abrir = (l: LinhaAtivo) => setEdit(c.ativos.find((x) => x.codigo === l.a.codigo) ?? l.a);
 
   return (
     <>
-      <div className="filtros-ativos">
-        <div className="abas-texto" role="group" aria-label="Filtrar por classe">
-          <button aria-pressed={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todos</button>
-          {classes.map((k) => <button key={k} aria-pressed={filtro === k} onClick={() => setFiltro(k)}>{NOME_CLASSE[k]}</button>)}
+      <div className="barra-ferramentas">
+        <label className="campo-inline">Instituição
+          <select value={inst} onChange={(e) => setInst(e.target.value)}>
+            <option value="todas">Todas</option>
+            {instituicoes.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </label>
+        <div className="alternador" role="radiogroup" aria-label="Agrupar por">
+          <span className="sub">Agrupar por</span>
+          <button role="radio" aria-checked={agrupar === 'classe'} onClick={() => setAgrupar('classe')}>Classe</button>
+          <button role="radio" aria-checked={agrupar === 'instituicao'} onClick={() => setAgrupar('instituicao')}>Instituição</button>
         </div>
         {incompletos > 0 && (
           <button className="alerta-linha" aria-pressed={filtro === 'incompletos'} onClick={() => setFiltro(filtro === 'incompletos' ? 'todas' : 'incompletos')}>
@@ -317,7 +368,13 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
           </button>
         )}
       </div>
+      <div className="abas-texto" role="group" aria-label="Filtrar por classe">
+        <button aria-pressed={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todas as classes</button>
+        {classes.map((k) => <button key={k} aria-pressed={filtro === k} onClick={() => setFiltro(k)}>{NOME_CLASSE[k]}</button>)}
+      </div>
+      {inst !== 'todas' && <p className="sub resumo-filtro">Em {inst}: {brl(totalVisivel)} ({pctBR(total ? totalVisivel / total : 0)} do patrimônio). Preço médio é o da carteira toda; a B3 não informa custo por corretora.</p>}
       {filtro === 'incompletos' && <p className="sub">O histórico da B3 não explica a quantidade atual destes ativos (IPO, oferta ou conversão). Abra o ativo para informar o preço médio, ou use “Conferir com a planilha antiga” em Importar.</p>}
+      {!linhas.length && <p className="sub">Nenhum ativo com esse filtro.</p>}
 
       {/* Celular: lista em duas linhas, uma métrica por vez */}
       <div className="so-celular">
@@ -326,18 +383,18 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
           {METRICAS.map(([k, t]) => <button key={k} role="radio" aria-checked={metrica === k} onClick={() => setMetrica(k)}>{t}</button>)}
         </div>
         {grupos.map((g) => (
-          <section key={g.classe} className="grupo">
-            <h3 className="grupo-titulo"><span>{NOME_CLASSE[g.classe]}</span><span className="num">{brl(g.valor)}</span></h3>
+          <section key={g.g} className="grupo">
+            <h3 className="grupo-titulo"><span>{nomeGrupo(g.g)}</span><span className="num">{brl(g.valor)}</span></h3>
             <ul className="razao">
-              {g.itens.map((a) => {
-                const p = precoDe(a);
+              {g.itens.map((l) => {
+                const { a } = l; const p = precoDe(a); const d = detalhe(l);
                 return (
-                  <li key={a.codigo}>
-                    <button className="razao-linha" onClick={() => setEdit(a)}>
-                      <span className="razao-cod">{a.codigo}{negociavel(a) && a.pm == null && <AlertTriangle size={13} className="icone-alerta" aria-label="sem preço médio" />}</span>
+                  <li key={l.chave}>
+                    <button className="razao-linha" onClick={() => abrir(l)}>
+                      <span className="razao-cod">{a.codigo}{negociavel(a) && a.pm == null && <AlertTriangle size={13} className="icone-alerta" aria-label="sem preço médio" />}{d.onde && <span className="selo-inst">{d.onde}</span>}</span>
                       <span className="razao-valor num">{brl(a.mercado)}</span>
                       <span className="razao-det">{negociavel(a) ? `${a.quantidade.toLocaleString('pt-BR')} × ${p != null ? brl(p) : '—'}` : a.nome.slice(0, 28)}</span>
-                      <span className="razao-var num">{pctOuTraco(metricaDe(a))}</span>
+                      <span className="razao-var num">{pctOuTraco(metricaDe(l))}</span>
                     </button>
                   </li>
                 );
@@ -359,16 +416,16 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
               ))}</tr>
             </thead>
             {grupos.map((g) => (
-              <tbody key={g.classe}>
-                <tr className="linha-grupo"><th colSpan={7} scope="rowgroup">{NOME_CLASSE[g.classe]} <span className="sub">{g.itens.length}</span></th><td className="num">{brl(g.valor)}</td><td className="num">{pctBR(total ? g.valor / total : 0)}</td></tr>
-                {g.itens.map((a) => {
-                  const i = ind.get(a.codigo)!;
-                  const p = precoDe(a);
+              <tbody key={g.g}>
+                <tr className="linha-grupo"><th colSpan={7} scope="rowgroup">{nomeGrupo(g.g)} <span className="sub">{g.itens.length}</span></th><td className="num">{brl(g.valor)}</td><td className="num">{pctBR(total ? g.valor / total : 0)}</td></tr>
+                {g.itens.map((l) => {
+                  const { a, i } = l; const p = precoDe(a); const d = detalhe(l);
                   return (
-                    <tr key={a.codigo} className={foco === a.codigo ? 'focado' : ''} tabIndex={0}
-                      onMouseEnter={() => setFoco(a.codigo)} onFocus={() => setFoco(a.codigo)} onClick={() => setEdit(a)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') setEdit(a); }}>
-                      <td><strong>{a.codigo}</strong>{negociavel(a) && a.pm == null && <AlertTriangle size={13} className="icone-alerta" aria-label="sem preço médio" />}<div className="sub nome-ativo">{negociavel(a) ? `${a.quantidade.toLocaleString('pt-BR')} cotas` : a.nome.slice(0, 26)}</div></td>
+                    <tr key={l.chave} className={linhaFoco?.chave === l.chave ? 'focado' : ''} tabIndex={0}
+                      onMouseEnter={() => setFoco(l.chave)} onFocus={() => setFoco(l.chave)} onClick={() => abrir(l)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') abrir(l); }}>
+                      <td><strong>{a.codigo}</strong>{negociavel(a) && a.pm == null && <AlertTriangle size={13} className="icone-alerta" aria-label="sem preço médio" />}
+                        <div className="sub nome-ativo">{d.qtd}{d.onde && <> · <span className="onde">{d.onde}</span></>}</div></td>
                       <td className="num">{p != null ? brl(p) : <span className="vazio-num">—</span>}</td>
                       <td className="num">{pctOuTraco(i.varDia)}</td>
                       <td className="num">{a.pm != null ? brl(a.pm) : <span className="vazio-num">—</span>}</td>
@@ -384,20 +441,36 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
             ))}
           </table>
         </div>
-        {ativoFoco && <Inspetor a={ativoFoco} i={ind.get(ativoFoco.codigo)!} preco={precoDe(ativoFoco)} onAbrir={() => setEdit(ativoFoco)} />}
+        {linhaFoco && <Inspetor a={linhaFoco.a} completo={c.ativos.find((x) => x.codigo === linhaFoco.a.codigo) ?? linhaFoco.a} i={linhaFoco.i} preco={precoDe(linhaFoco.a)} onAbrir={() => abrir(linhaFoco)} />}
       </div>
       {edit && <EditarAtivo a={edit} c={c} i={ind.get(edit.codigo)!} onFechar={() => setEdit(null)} onSalvo={() => { setEdit(null); onSalvo(); }} />}
     </>
   );
 }
 
+/** Lista de onde o ativo está, com a fatia de cada instituição. */
+function OndeEsta({ a }: { a: Ativo }) {
+  const neg = NEGOCIAVEL.includes(a.classe);
+  return (
+    <ul className="onde-lista">
+      {a.porInstituicao.map((p) => (
+        <li key={p.instituicao}>
+          <span>{p.instituicao}</span>
+          <span className="num sub">{neg ? `${p.quantidade.toLocaleString('pt-BR')} ${p.quantidade === 1 ? 'cota' : 'cotas'}` : ''}</span>
+          <span className="num">{brl(p.valor)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Painel lateral: o resumo de venda do ativo sob o mouse (ou com foco do teclado). */
-function Inspetor({ a, i, preco, onAbrir }: { a: Ativo; i: Indicadores; preco: number | null; onAbrir: () => void }) {
+function Inspetor({ a, completo, i, preco, onAbrir }: { a: Ativo; completo: Ativo; i: Indicadores; preco: number | null; onAbrir: () => void }) {
   const frases = resumoDecisao(a, i, preco);
   return (
     <aside className="inspetor" aria-live="polite">
       <div className="inspetor-cab">
-        <div><strong className="inspetor-cod">{a.codigo}</strong><div className="sub">{a.nome.slice(0, 40)}</div></div>
+        <div><strong className="inspetor-cod">{a.codigo}</strong><div className="sub">{a.nome.slice(0, 40)}</div>{a.porInstituicao.length === 1 && completo.porInstituicao.length > 1 && <div className="sub">Só a parte em {a.porInstituicao[0].instituicao}</div>}</div>
         {preco != null && <div className="num"><div className="inspetor-preco">{brl(preco)}</div>{i.varDia != null && <div className={classeVar(i.varDia)}>{sinalPct(i.varDia)} hoje</div>}</div>}
       </div>
       <dl className="inspetor-numeros">
@@ -405,6 +478,8 @@ function Inspetor({ a, i, preco, onAbrir }: { a: Ativo; i: Indicadores; preco: n
         <div><dt>Proventos recebidos</dt><dd>{brl(i.proventosTotal)}</dd></div>
         <div className="soma"><dt>Resultado com proventos</dt><dd className={classeVar(i.retornoTotal)}>{i.retornoTotal != null ? sinalBrl(i.retornoTotal) : '—'}</dd></div>
       </dl>
+      <h3 className="inspetor-sec">Onde está</h3>
+      <OndeEsta a={completo} />
       <ul className="inspetor-frases">{frases.slice(i.varDia != null ? 1 : 0).map((f, k) => <li key={k}>{f}</li>)}</ul>
       <button className="pequeno" onClick={onAbrir}>Abrir gráfico e indicadores</button>
     </aside>
@@ -468,6 +543,8 @@ function EditarAtivo({ a, c, i, onFechar, onSalvo }: { a: Ativo; c: Carteira; i:
   return (
     <Modal titulo={`${a.codigo} — ${a.nome.slice(0, 30)}`} onFechar={onFechar}>
       <div className="visao-fixa">{resumoDecisao(a, i, preco).map((t, k) => <p key={k}>{t}</p>)}</div>
+      <h3 className="inspetor-sec">Onde está</h3>
+      <OndeEsta a={a} />
       {neg && <Grafico a={a} c={c} i={i} />}
       <dl className="indicadores">
         <div><dt>Preço atual</dt><dd>{num(preco, brl)}</dd></div>
