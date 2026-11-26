@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 // RF-35 a RF-40 e RF-39a: pessoas, marcadores, saldo, recebimentos, resumo, links.
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -182,7 +183,7 @@ export function PessoaDetalhe() {
         {recs.map((r) => (
           <div className="linha entre" key={r.id} style={{ marginTop: 6 }}>
             <span className="grow">{dataBR(r.data)} {r.observacao ?? ''}</span><span className="num">{brl(r.valor)}</span>
-            <button className="perigo" onClick={() => rodar(async () => { ok(await supabase.from('receipts').delete().eq('id', r.id)); await carregar(); })}>✕</button>
+            <button className="perigo" onClick={() => rodar(async () => { ok(await supabase.from('receipts').delete().eq('id', r.id)); await carregar(); })} aria-label="Remover"><X size={16} /></button>
           </div>
         ))}
       </div>

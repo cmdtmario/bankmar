@@ -7,18 +7,23 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "e2e:server": "VITE_SUPABASE_URL=https://demo.supabase.co VITE_SUPABASE_ANON_KEY=demo vite --port 5179 --strictPort",
+    "e2e": "python3 tests/e2e/with_server.py --server 'npm run e2e:server' --port 5179 --timeout 60 -- python3 tests/e2e/telas.py"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
+    "framer-motion": "^14.14.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
+    "lucide-react": "^1.81.0",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.7",
+    "recharts": "^3.11.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

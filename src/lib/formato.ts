@@ -48,5 +48,9 @@ export function somaMeses(competencia: string, n: number): string {
 
 export const nomeMes = (competencia: string) => {
   const [a, m] = competencia.split('-').map(Number);
-  return new Date(Date.UTC(a, m - 1, 15)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const t = new Date(Date.UTC(a, m - 1, 15)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return t.charAt(0).toUpperCase() + t.slice(1); // "Novembro de 2026"
 };
+
+/** 0.4213 -> "42,1%" */
+export const pctBR = (fracao: number, casas = 1) => `${(fracao * 100).toLocaleString('pt-BR', { maximumFractionDigits: casas })}%`;

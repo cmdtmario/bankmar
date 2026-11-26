@@ -9,3 +9,4 @@ dev-dist
 data/
 *.xlsx
 *.pdf
+tests/e2e/prints/

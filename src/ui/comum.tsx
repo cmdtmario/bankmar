@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import { carregarCadastros, type Cadastros } from '../lib/dados';
 import { calcularDivisao, DivisaoError, type RegraDivisao, type Parte } from '../lib/regras';
 import { brl } from '../lib/formato';
@@ -27,12 +29,13 @@ export const Erro = ({ msg }: { msg: string | null }) => (msg ? <div className="
 
 export function Modal({ titulo, onFechar, children }: { titulo: string; onFechar: () => void; children: ReactNode }) {
   return (
-    <div className="modal-fundo" onClick={onFechar}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={titulo}>
-        <div className="linha entre"><h2 style={{ margin: 0 }}>{titulo}</h2><button onClick={onFechar} aria-label="Fechar">✕</button></div>
+    <motion.div className="modal-fundo" onClick={onFechar} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
+      <motion.div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={titulo}
+        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}>
+        <div className="linha entre"><h2 style={{ margin: 0 }}>{titulo}</h2><button className="icone" onClick={onFechar} aria-label="Fechar"><X size={18} /></button></div>
         {children}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

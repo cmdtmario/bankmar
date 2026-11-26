@@ -61,3 +61,83 @@ header.topo { background: rgba(8, 8, 8, .92); backdrop-filter: blur(8px); border
 details summary { cursor: pointer; color: var(--ouro); }
 code { color: var(--ouro-claro); }
 img[alt="QR code do autenticador"] { background: #fff; padding: 8px; border-radius: 8px; }
+
+/* ---- Painel, ícones, interação (repaginada) ---- */
+body { font-size: 16px; line-height: 1.5; }
+button, a.botao-link, .linha-botao { min-height: 44px; }
+button.pequeno { min-height: 36px; padding: 6px 14px; }
+button.icone { display: inline-flex; align-items: center; justify-content: center; width: 44px; padding: 0; }
+button:active, .atalho:active { transform: scale(.98); }
+:focus-visible { outline: 2px solid var(--ouro-claro); outline-offset: 2px; }
+a.botao-link { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--linha); border-radius: 9px; color: var(--ouro-claro); }
+h2 { display: flex; align-items: center; gap: 8px; }
+h2 svg { color: var(--ouro); }
+.num-tab { font-variant-numeric: tabular-nums; }
+.neg { color: var(--erro) !important; }
+.pos { color: var(--ok) !important; }
+.seletor-mes { margin-bottom: 8px; }
+
+nav.abas a { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px; justify-content: center; }
+nav.abas a svg { transition: transform .2s; }
+nav.abas a.active svg { transform: translateY(-1px); color: var(--ouro); }
+
+.destaque { padding: 16px; background: radial-gradient(ellipse at 30% 0%, rgba(212,171,92,.12), transparent 60%), linear-gradient(180deg, var(--card2), var(--card)); }
+.destaque-grade { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: center; }
+@media (min-width: 640px) { .destaque-grade { grid-template-columns: 260px 1fr; } }
+.mostrador { position: relative; width: min(260px, 78vw); aspect-ratio: 1; margin: 0 auto; }
+.mostrador svg { width: 100%; height: 100%; }
+.mostrador-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-top: 6px; }
+.valor-grande { font-family: var(--serif); font-size: clamp(1.45rem, 6vw, 1.85rem); font-weight: 600; color: var(--ouro-claro); letter-spacing: .01em; margin: 2px 0; }
+.resumo-numeros { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0; }
+.resumo-numeros div { border-left: 2px solid var(--linha); padding-left: 10px; }
+.resumo-numeros dt { color: var(--sub); font-size: .8rem; }
+.resumo-numeros dd { margin: 2px 0 0; font-family: var(--serif); font-size: 1.1rem; color: #f5edda; }
+
+.lista-venc { display: flex; flex-direction: column; gap: 0; }
+.venc { display: flex; align-items: center; gap: 10px; }
+.venc-icone { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #211d16; color: var(--ouro); flex: none; }
+.venc.atraso { border-color: rgba(239,125,109,.45); }
+.venc.atraso .venc-icone { background: rgba(239,125,109,.12); color: var(--erro); }
+.venc.hoje { border-color: rgba(242,184,75,.45); }
+.prazo.atraso { color: var(--erro); font-weight: 600; }
+.prazo.hoje { color: var(--alerta); font-weight: 600; }
+.vazio { display: flex; gap: 8px; align-items: center; color: var(--sub); }
+
+.grade-2 { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+@media (min-width: 760px) { .grade-2 { grid-template-columns: 1fr 1fr; } }
+.grade-2 > .card { margin-bottom: 0; }
+.rosca { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.legenda { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 160px; }
+.legenda li { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: .9rem; border-bottom: 1px solid var(--linha); }
+.legenda li .num { margin-left: auto; }
+.ponto { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.mais-link { display: inline-block; margin-top: 8px; font-size: .9rem; }
+.dica { background: #0e0d0b; border: 1px solid var(--linha); border-radius: 8px; padding: 8px 10px; font-size: .85rem; }
+.lista-simples { list-style: none; margin: 0; padding: 0; }
+.lista-simples li { border-bottom: 1px solid var(--linha); }
+.lista-simples li:last-child { border-bottom: 0; }
+.lista-simples a { display: flex; align-items: center; gap: 6px; padding: 10px 0; }
+.linha-botao { display: flex; width: 100%; align-items: center; gap: 8px; background: none; border: 0; padding: 8px 0; text-align: left; }
+.pendencias { margin-top: 10px; border-color: rgba(242,184,75,.35); }
+.atalhos { display: grid; gap: 8px; margin-bottom: 8px; }
+@media (min-width: 640px) { .atalhos { grid-template-columns: 1fr 1fr; } }
+.atalho { display: flex; align-items: center; gap: 12px; color: var(--txt); margin-bottom: 0; transition: border-color .2s; }
+.atalho:hover { border-color: var(--ouro-escuro); }
+.atalho svg:first-child { color: var(--ouro); }
+.atalho .sub { display: block; }
+.esqueleto { border-radius: 12px; background: linear-gradient(90deg, #15140f 0%, #211d16 50%, #15140f 100%); background-size: 200% 100%; animation: brilho 1.4s ease-in-out infinite; margin-bottom: 10px; }
+@keyframes brilho { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.recharts-wrapper, .recharts-surface { outline: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+.titulo-pagina { font-family: var(--serif); color: var(--sub); letter-spacing: .04em; margin: 4px 0 0; text-align: center; font-size: .9rem; }
+.linha.entre:has(> h1) { flex-wrap: nowrap; }
+.linha.entre > h1 { flex: 1; text-align: center; font-size: clamp(1.05rem, 4.6vw, 1.3rem); margin: 8px 0; }
+.botao-arquivo { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 9px; background: var(--grad-ouro); color: #1a1407; font-weight: 600; cursor: pointer; }
+label:has(> .botao-arquivo):focus-within .botao-arquivo { outline: 2px solid var(--ouro-claro); outline-offset: 2px; }
+@media (max-width: 520px) {
+  .venc { display: grid; grid-template-columns: 36px 1fr auto; grid-template-areas: "i t v" "i t b"; row-gap: 6px; }
+  .venc .venc-icone { grid-area: i; }
+  .venc .grow { grid-area: t; }
+  .venc .num { grid-area: v; }
+  .venc button { grid-area: b; justify-self: end; }
+}

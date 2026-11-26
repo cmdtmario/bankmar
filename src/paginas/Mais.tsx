@@ -1,6 +1,8 @@
 // Cartões (cadastro mínimo para faturas), avisos (RF-80/82), exportação (RNF-07),
 // importação da planilha 2026 (RF-90/94) e histórico de importações (RNF-04).
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronRight, PieChart, Receipt } from 'lucide-react';
 import { supabase, ok } from '../lib/supabase';
 import type { Cartao } from '../lib/dados';
 import { importarPlanilha2026, totaisDoMes, PESSOA_A_REVISAR, type ResultadoImportacao } from '../lib/importacao/planilha2026';
@@ -31,6 +33,10 @@ export function Mais() {
     <main>
       <h1>Mais</h1>
       <Erro msg={erro} />
+      <div className="atalhos">
+        <Link to="/contas" className="card atalho"><Receipt size={22} aria-hidden="true" /><span className="grow"><strong>Contas</strong><span className="sub">Recorrentes, avulsas e boletos</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
+        <Link to="/categorias" className="card atalho"><PieChart size={22} aria-hidden="true" /><span className="grow"><strong>Gastos por categoria</strong><span className="sub">Rosca, 12 meses e regras</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
+      </div>
       {msg && <div className="okmsg">{msg}</div>}
 
       <h2>Cartões</h2>
@@ -108,7 +114,7 @@ function PreviaPlanilha({ plan, onFechar, onFeito }: { plan: { r: ResultadoImpor
         <table>
           <thead><tr><th>Mês</th><th className="num">Renda</th><th className="num">Contas</th><th className="num">Faturas</th><th className="num">Faturas (planilha)</th></tr></thead>
           <tbody>{r.meses.map((m) => { const t = totaisDoMes(m); return (
-            <tr key={m.aba}><td style={{ textTransform: 'capitalize' }}>{nomeMes(m.competencia)}</td><td className="num">{brl(m.renda)}</td><td className="num">{brl(t.contas)}</td><td className="num">{brl(t.faturas)}</td><td className="num">{brl(t.faturasPlanilha)}</td></tr>
+            <tr key={m.aba}><td>{nomeMes(m.competencia)}</td><td className="num">{brl(m.renda)}</td><td className="num">{brl(t.contas)}</td><td className="num">{brl(t.faturas)}</td><td className="num">{brl(t.faturasPlanilha)}</td></tr>
           ); })}</tbody>
         </table>
       </div>

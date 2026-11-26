@@ -42,7 +42,7 @@ export function Contas() {
         </div>
       ))}
 
-      <h2 style={{ textTransform: 'capitalize' }}>Contas de {nomeMes(comp)}</h2>
+      <h2>Contas de {nomeMes(comp).toLowerCase()}</h2>
       {contasMes.map((k) => (
         <div className="card linha entre" key={k.id}>
           <div className="grow"><strong>{k.descricao}</strong><div className="sub">vence {dataBR(k.vencimento)} · {rotuloDivisao(k.split_rule, c)}</div></div>

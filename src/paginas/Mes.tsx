@@ -1,11 +1,12 @@
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 // RF-12, RF-13, RF-14, RF-16: tela "Mês" (equivalente à aba mensal da planilha).
 import { useEffect, useState } from 'react';
 import { dadosDoMes, salvarRenda, adicionarPagamento, removerPagamento, type Conta, type FaturaResumo, type PagamentoDb } from '../lib/dados';
 import { statusConta } from '../lib/regras';
-import { brl, dataBR, hojeBrasilia, competenciaDe, somaMeses, nomeMes, somaCentavos } from '../lib/formato';
+import { pctBR, brl, dataBR, hojeBrasilia, competenciaDe, somaMeses, nomeMes, somaCentavos } from '../lib/formato';
 import { Carregando, Erro, Modal, numeroDe, useAcao, useCadastros } from '../ui/comum';
 
-type Item = { tipo: 'conta' | 'fatura'; id: string; nome: string; vencimento: string | null; valor: number; mario: number; pagamentos: PagamentoDb[]; banco: string | null; obs?: string | null; extra?: string };
+export type Item = { tipo: 'conta' | 'fatura'; id: string; nome: string; vencimento: string | null; valor: number; mario: number; pagamentos: PagamentoDb[]; banco: string | null; obs?: string | null; extra?: string };
 
 export function Mes() {
   const { c } = useCadastros();
@@ -40,9 +41,9 @@ export function Mes() {
   return (
     <main>
       <div className="linha entre">
-        <button onClick={() => setComp(somaMeses(comp, -1))} aria-label="Mês anterior">◀</button>
-        <h1 style={{ textTransform: 'capitalize' }}>{nomeMes(comp)}</h1>
-        <button onClick={() => setComp(somaMeses(comp, 1))} aria-label="Próximo mês">▶</button>
+        <button onClick={() => setComp(somaMeses(comp, -1))} aria-label="Mês anterior" className="icone"><ChevronLeft size={20} /></button>
+        <h1>{nomeMes(comp)}</h1>
+        <button onClick={() => setComp(somaMeses(comp, 1))} aria-label="Próximo mês" className="icone"><ChevronRight size={20} /></button>
       </div>
       <Erro msg={erro} />
       {!dados ? <Carregando /> : (
@@ -60,7 +61,7 @@ export function Mes() {
             <div className="linha entre" style={{ marginTop: 10 }}>
               <div><div className="sub">Total do mês</div><strong>{brl(total)}</strong></div>
               <div><div className="sub">Parte do Mário</div><strong>{brl(totalMario)}</strong></div>
-              <div><div className="sub">Impacto</div><strong>{rendaNum ? `${((totalMario / rendaNum) * 100).toFixed(1)}%` : '—'}</strong></div>
+              <div><div className="sub">Impacto</div><strong>{rendaNum ? pctBR(totalMario / rendaNum) : '—'}</strong></div>
               <div><div className="sub">Pendências</div><strong>{pendentes.length}</strong></div>
             </div>
           </div>
@@ -72,7 +73,7 @@ export function Mes() {
                 <div className="linha entre">
                   <div className="grow">
                     <strong>{i.nome}</strong> <span className="sub">{i.tipo === 'fatura' ? '· fatura' : ''}</span>
-                    <div className="sub">vence {dataBR(i.vencimento)} · meu: {brl(i.mario)}{rendaNum ? ` · ${((i.mario / rendaNum) * 100).toFixed(2)}% da renda` : ''}</div>
+                    <div className="sub">vence {dataBR(i.vencimento)} · meu: {brl(i.mario)}{rendaNum ? ` · ${pctBR(i.mario / rendaNum, 2)} da renda` : ''}</div>
                     {i.obs && <div className="sub">{i.obs}</div>}
                     {i.extra && <div className="sub" style={{ color: 'var(--alerta)' }}>{i.extra}</div>}
                   </div>
@@ -81,7 +82,7 @@ export function Mes() {
                 <div className="linha" style={{ marginTop: 6 }}>
                   {i.pagamentos.map((p) => (
                     <span key={p.id} className="sub">pago {dataBR(p.data)} {p.banco ?? ''} {brl(p.valor)}{' '}
-                      <button className="perigo" onClick={() => rodar(async () => { await removerPagamento(p.id); await carregar(); })} aria-label="Remover pagamento">✕</button>
+                      <button className="perigo" onClick={() => rodar(async () => { await removerPagamento(p.id); await carregar(); })} aria-label="Remover pagamento"><X size={16} /></button>
                     </span>
                   ))}
                   {i.pagamentos.length < 2 && <button onClick={() => setPagando(i)}>Registrar pagamento</button>}
@@ -96,11 +97,11 @@ export function Mes() {
   );
 }
 
-function FormPagamento({ item, hoje, onFechar, onSalvo }: { item: Item; hoje: string; onFechar: () => void; onSalvo: () => void }) {
+export function FormPagamento({ item, hoje, onFechar, onSalvo }: { item: Item; hoje: string; onFechar: () => void; onSalvo: () => void }) {
   const restante = somaCentavos([item.valor, ...item.pagamentos.map((p) => -p.valor)]);
   const [data, setData] = useState(hoje);
   const [banco, setBanco] = useState(item.banco ?? '');
-  const [valor, setValor] = useState(String(restante).replace('.', ','));
+  const [valor, setValor] = useState(restante.toFixed(2).replace('.', ','));
   const { erro, ocupado, rodar } = useAcao();
   return (
     <Modal titulo={`Pagamento — ${item.nome}`} onFechar={onFechar}>

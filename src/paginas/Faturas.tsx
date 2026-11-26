@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight, FileUp, NotebookPen } from 'lucide-react';
 // RF-20 a RF-28: faturas por cartão, importação (PDF, texto, manual) e lançamentos.
 import { useEffect, useState } from 'react';
 import { supabase, ok } from '../lib/supabase';
@@ -43,10 +44,11 @@ export function Faturas() {
 
   return (
     <main>
+      <p className="titulo-pagina">Faturas</p>
       <div className="linha entre">
-        <button onClick={() => setComp(somaMeses(comp, -1))} aria-label="Mês anterior">◀</button>
-        <h1 style={{ textTransform: 'capitalize' }}>Faturas · {nomeMes(comp)}</h1>
-        <button onClick={() => setComp(somaMeses(comp, 1))} aria-label="Próximo mês">▶</button>
+        <button onClick={() => setComp(somaMeses(comp, -1))} aria-label="Mês anterior" className="icone"><ChevronLeft size={20} /></button>
+        <h1>{nomeMes(comp)}</h1>
+        <button onClick={() => setComp(somaMeses(comp, 1))} aria-label="Próximo mês" className="icone"><ChevronRight size={20} /></button>
       </div>
       <Erro msg={erro} />
       {!resumos ? <Carregando /> : !cartoes.length ? <p className="sub">Cadastre seus cartões em “Mais”.</p> : cartoes.map((k) => {
@@ -66,7 +68,7 @@ export function Faturas() {
             <div className="linha" style={{ marginTop: 8 }}>
               {k.emissor !== 'outro' && (
                 <label style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <span className="selo">Importar PDF</span>
+                  <span className="botao-arquivo"><FileUp size={16} aria-hidden="true" /> Importar PDF</span>
                   <input type="file" accept="application/pdf" style={{ width: 0, height: 0, opacity: 0 }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) importarPdf(k, f); }} />
                 </label>
               )}
@@ -126,7 +128,7 @@ function Lancamentos({ cartao, invoiceId, onFechar }: { cartao: Cartao; invoiceI
         <div key={t.id} className="linha entre" style={{ borderBottom: '1px solid var(--linha)', padding: '6px 0' }}>
           <div className="grow">
             {t.descricao_original ?? t.descricao}{t.parcela_atual ? ` (${t.parcela_atual}/${t.parcelas_total})` : ''}
-            {t.descricao_original && t.descricao !== t.descricao_original && <div className="sub">📝 {t.descricao}</div>}
+            {t.descricao_original && t.descricao !== t.descricao_original && <div className="sub"><NotebookPen size={13} aria-hidden="true" /> {t.descricao}</div>}
             <div className="sub">{dataBR(t.data_compra)} · {c.categorias.find((k) => k.id === t.category_id)?.nome ?? 'sem categoria'} · {rotuloDivisao(t.split_rule, c)}{t.situacao !== 'real' ? ` · ${t.situacao}` : ''}{t.conferido ? ' · ✓' : ''}</div>
           </div>
           <span className="num">{brl(Number(t.valor))}</span>

@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 // RF-30 (categorias), RF-31 (regras), RF-32 (visões).
 import { useEffect, useState } from 'react';
 import { supabase, ok } from '../lib/supabase';
@@ -48,10 +49,11 @@ export function Categorias() {
 
   return (
     <main>
+      <p className="titulo-pagina">Gastos por categoria</p>
       <div className="linha entre">
-        <button onClick={() => setComp(somaMeses(comp, -1))} aria-label="Mês anterior">◀</button>
-        <h1 style={{ textTransform: 'capitalize' }}>Gastos · {nomeMes(comp)}</h1>
-        <button onClick={() => setComp(somaMeses(comp, 1))} aria-label="Próximo mês">▶</button>
+        <button onClick={() => setComp(somaMeses(comp, -1))} aria-label="Mês anterior" className="icone"><ChevronLeft size={20} /></button>
+        <h1>{nomeMes(comp)}</h1>
+        <button onClick={() => setComp(somaMeses(comp, 1))} aria-label="Próximo mês" className="icone"><ChevronRight size={20} /></button>
       </div>
       <div className="linha">
         <select value={base} onChange={(e) => setBase(e.target.value as typeof base)}><option value="total_mario">Só a minha parte</option><option value="total">Valor total</option></select>
@@ -117,7 +119,7 @@ function GerirCategorias({ regras, onFechar }: { regras: RegraDb[]; onFechar: ()
       {rs.map((r) => (
         <div className="linha entre" key={r.id}>
           <span className="grow">{r.padrao}</span><span>{c.categorias.find((k) => k.id === r.category_id)?.nome}</span>
-          <button className="perigo" onClick={() => rodar(async () => { ok(await supabase.from('category_rules').delete().eq('id', r.id)); setRs(rs.filter((x) => x.id !== r.id)); })}>✕</button>
+          <button className="perigo" onClick={() => rodar(async () => { ok(await supabase.from('category_rules').delete().eq('id', r.id)); setRs(rs.filter((x) => x.id !== r.id)); })} aria-label="Remover"><X size={16} /></button>
         </div>
       ))}
       <div className="linha" style={{ marginTop: 6 }}>
