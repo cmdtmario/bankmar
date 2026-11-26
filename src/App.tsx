@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
-import { CalendarDays, CreditCard, Home, KeyRound, LogOut, Menu, Users } from 'lucide-react';
+import { CalendarDays, CreditCard, Home, KeyRound, LineChart, LogOut, Menu, Users } from 'lucide-react';
 import { Painel } from './paginas/Painel';
 import { supabase, configurado } from './lib/supabase';
 import { semearSeVazio } from './lib/dados';
@@ -12,6 +12,7 @@ const Faturas = lazy(() => import('./paginas/Faturas').then((m) => ({ default: m
 const Categorias = lazy(() => import('./paginas/Categorias').then((m) => ({ default: m.Categorias })));
 const Mais = lazy(() => import('./paginas/Mais').then((m) => ({ default: m.Mais })));
 const Compartilhado = lazy(() => import('./paginas/Compartilhado').then((m) => ({ default: m.Compartilhado })));
+const Investimentos = lazy(() => import('./paginas/Investimentos').then((m) => ({ default: m.Investimentos })));
 const Pessoas = lazy(() => import('./paginas/Pessoas').then((m) => ({ default: m.Pessoas })));
 const PessoaDetalhe = lazy(() => import('./paginas/Pessoas').then((m) => ({ default: m.PessoaDetalhe })));
 import { CadastrosProvider, Carregando } from './ui/comum';
@@ -55,6 +56,7 @@ function Area() {
             <Route path="/pessoas" element={<Pessoas />} />
             <Route path="/pessoas/:id" element={<PessoaDetalhe />} />
             <Route path="/categorias" element={<Categorias />} />
+            <Route path="/investimentos" element={<Investimentos />} />
             <Route path="/mais" element={<Mais />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -66,6 +68,7 @@ function Area() {
         <NavLink to="/mes"><CalendarDays size={21} aria-hidden="true" /><span>Mês</span></NavLink>
         <NavLink to="/faturas"><CreditCard size={21} aria-hidden="true" /><span>Faturas</span></NavLink>
         <NavLink to="/pessoas"><Users size={21} aria-hidden="true" /><span>Pessoas</span></NavLink>
+        <NavLink to="/investimentos"><LineChart size={21} aria-hidden="true" /><span>Investir</span></NavLink>
         <NavLink to="/mais" className={({ isActive }) => (isActive || ['/contas', '/categorias'].includes(loc.pathname) ? 'active' : '')}><Menu size={21} aria-hidden="true" /><span>Mais</span></NavLink>
       </nav>
     </CadastrosProvider>

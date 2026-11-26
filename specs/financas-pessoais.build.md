@@ -129,3 +129,31 @@ Abreviação usada nos caminhos: `M` = `supabase/migrations/20261125000000_entre
 - Caso 15 (aviso de 80% do plano gratuito): decidir se vira verificação manual ou se sai do escopo.
 - RNF-07: definir o destino da cópia semanal.
 - Revisar os itens "A revisar (planilha)" depois da importação.
+
+---
+
+# Relatório de implementação — Entrega 3 (Investimentos)
+
+**Spec:** specs/financas-pessoais.md · **Data:** 2026-11-26 · **Branch:** dev (não publicada)
+
+| ID | Requisito (resumo) | Status | Onde | Como verificar |
+|----|--------------------|--------|------|----------------|
+| RF-60 | Importar Negociação, Movimentação, Proventos a receber e Posição, reconhecendo o tipo pelas colunas | Atendido | `src/lib/investimentos/b3.ts`, `dados.ts:importarArquivoB3` | Investir → Importar → enviar os 4 arquivos; teste `carteira.test.ts` com arquivos reais |
+| RF-60c | Eventos corporativos e transferências | Atendido (com desvio) | `carteira.ts:calcularCustos` | ver “Desvios” |
+| RF-60d | Equivalência de instituições | Parcial | `carteira.ts:criarAgrupador`, tabela `inv_instituicoes` | agrupamento padrão funciona; ainda não há tela para editar a tabela |
+| RF-61 | Reimportar não duplica | Atendido | `unique(user_id, chave)` + upsert ignoreDuplicates | teste SQL “reimportar a mesma negociação não duplica” |
+| RF-62 | Cotação diária | Atendido | `supabase/functions/investimentos-diario` + botão Cotações | depende de publicar a função e do agendamento |
+| RF-63–65 | Ativos com PM, resultado, proventos, alvo, PM manual | Atendido | `paginas/Investimentos.tsx` (Ativos/EditarAtivo) | e2e `*-41`, `*-45` |
+| RF-66 | Previdência e saldos fora da B3 | Atendido | aba Importar → formulário | e2e `*-43` |
+| RF-67 | Foto mensal e evolução | Atendido | função diária (`logica.ts`), gráfico Evolução | `diario.test.ts` |
+| RF-68 | Proventos por mês/tipo/ativo/ano e próximos pagamentos | Atendido | aba Proventos, card Próximos pagamentos | e2e `*-42` |
+| RF-69 | Conciliação com a planilha antiga + “usar preço da planilha” | Atendido | `planilhaAntiga.ts` | com a planilha real: 16 dos 19 ativos sem PM são cobertos |
+
+## Desvios e decisões
+- Quantidade vem do arquivo de Posição. O histórico da B3 não traz IPOs, ofertas, conversões e renomeações (ex.: ALSO3→ALOS3). Com os seus arquivos, 28 dos 83 ativos têm o custo completo pelo histórico. Para os outros, o PM vem do valor que você informar ou da planilha antiga. A spec (RF-60c e a definição de concluído) foi atualizada.
+- Na Movimentação, as linhas “Compra/Venda” (termo/FCA) são ignoradas, e as “Transferência - Liquidação” espelham negociações já contadas.
+- Cotações vêm do Yahoo Finance, que é gratuito e não pede chave. A brapi.dev entra como reserva se BRAPI_TOKEN for configurado.
+
+## Pendências
+- Publicar a função `investimentos-diario` e criar o agendamento (`supabase/agendamento.sql`, 2º bloco).
+- Tela de equivalência de instituições (RF-60d).

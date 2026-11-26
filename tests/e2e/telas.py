@@ -96,6 +96,28 @@ DADOS = {
     "purchases": [], "learned_rules": [],
 }
 
+# Investimentos fictícios (nada do Mario)
+_POS = [("PETR4", "acao", "Petrobras PN", 200, 38.1, "INTER DTVM"), ("ITSA4", "acao", "Itaúsa PN", 500, 11.2, "NU INVEST"),
+        ("HGLG11", "fii", "CSHG Logística FII", 40, 158.4, "INTER DTVM"), ("MXRF11", "fii", "Maxi Renda FII", 900, 9.6, "XP INVESTIMENTOS"),
+        ("BOVA11", "etf", "iShares Ibovespa", 30, 128.0, "NU INVEST"), ("WEGE3", "acao", "WEG ON", 60, 52.3, "C6 CTVM")]
+DADOS.update({
+    "inv_posicoes": [{"id": i, "data_ref": HOJE.isoformat(), "classe": c, "codigo": k, "produto": n, "instituicao": inst, "cnpj": None, "isin": None, "emissor": None,
+                      "indexador": None, "vencimento": None, "quantidade": q, "preco": pr, "valor": q * pr, "valor_aplicado": None} for i, (k, c, n, q, pr, inst) in enumerate(_POS)]
+                    + [{"id": 99, "data_ref": HOJE.isoformat(), "classe": "renda_fixa", "codigo": "CDB-BANCO-X", "produto": "CDB Banco X 110% CDI", "instituicao": "INTER DTVM",
+                        "cnpj": None, "isin": None, "emissor": "Banco X", "indexador": "CDI", "vencimento": "2028-05-10", "quantidade": 10, "preco": 1180.5, "valor": 11805, "valor_aplicado": 10000}],
+    "inv_negociacoes": [{"id": i, "data": f"2024-0{1 + i % 8}-10", "tipo": "Compra", "mercado": "Mercado à Vista", "instituicao": inst, "codigo": k, "quantidade": q, "preco": pr * 0.85,
+                         "valor": q * pr * 0.85, "chave": f"n{i}"} for i, (k, c, n, q, pr, inst) in enumerate(_POS) if k != "WEGE3"],
+    "inv_movimentacoes": [{"id": 100 + j, "data": f"{2025 + j // 12}-{1 + j % 12:02d}-15", "entrada": True, "tipo": "Rendimento" if k.endswith("11") else "Dividendo", "produto": k, "codigo": k,
+                           "instituicao": "INTER DTVM", "quantidade": None, "preco": None, "valor": v, "chave": f"m{j}{k}"}
+                          for j in range(23) for k, v in [("HGLG11", 44.0), ("MXRF11", 90.0)] + ([("PETR4", 140.0)] if j % 3 == 0 else [])],
+    "inv_proventos_receber": [{"id": 1, "codigo": "MXRF11", "produto": "MXRF11", "tipo": "Rendimento", "evento": "RENDIMENTO", "previsao": (HOJE + timedelta(days=4)).isoformat(), "instituicao": "XP", "quantidade": 900, "valor": 90.0},
+                              {"id": 2, "codigo": "PETR4", "produto": "PETR4", "tipo": "Dividendo", "evento": "DIVIDENDO", "previsao": (HOJE + timedelta(days=18)).isoformat(), "instituicao": "INTER", "quantidade": 200, "valor": 128.4}],
+    "inv_ajustes": [{"codigo": "HGLG11", "preco_medio": None, "preco_alvo": 175, "origem": None, "observacao": None}],
+    "inv_cotacoes": [], "inv_instituicoes": [],
+    "inv_saldos_manuais": [{"id": "s1", "instituicao": "Previdência Exemplo", "produto": "PGBL Exemplo", "classe": "previdencia", "competencia": COMP.isoformat(), "saldo": 42000, "aportes": 500}],
+    "inv_fotos": [{"competencia": mes(HOJE, -i).isoformat(), "valor": 118000 - i * 2100} for i in range(1, 9)],
+})
+
 
 def responder(route):
     req = route.request
@@ -136,7 +158,7 @@ def responder(route):
     return route.fulfill(status=200, content_type="application/json", body=json.dumps(linhas))
 
 
-TELAS = ["/", "/mes", "/faturas", "/contas", "/pessoas", "/pessoas/p1", "/categorias", "/mais"]
+TELAS = ["/", "/mes", "/faturas", "/contas", "/pessoas", "/pessoas/p1", "/categorias", "/mais", "/investimentos"]
 TAMANHOS = {"celular": (375, 812), "deitado": (812, 375), "tablet": (768, 1024), "desktop": (1280, 900)}
 
 
@@ -177,6 +199,24 @@ def main():
             pg.get_by_role("button", name="Pagar").first.click()
             assert pg.get_by_role("dialog").is_visible(), "modal de pagamento não abriu"
             pg.screenshot(path=str(SAIDA / f"{nome_tam}-20-pagar.png"))
+            # investimentos: abas
+            pg.goto(BASE + "/investimentos")
+            pg.wait_for_load_state("networkidle")
+            assert pg.get_by_text("Patrimônio total").is_visible()
+            assert pg.get_by_text("Próximos pagamentos").is_visible()
+            for n, aba in enumerate(["Ativos", "Proventos", "Importar"], 1):
+                atual["tela"] = "/investimentos " + aba
+                pg.get_by_role("tab", name=aba).click()
+                pg.wait_for_timeout(500)
+                assert not pg.locator(".erro").count(), f"investimentos {aba}: erro na tela"
+                assert pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), f"investimentos {aba}: rolagem horizontal em {nome_tam}"
+                pg.screenshot(path=str(SAIDA / f"{nome_tam}-4{n}-investimentos-{aba.lower()}.png"), full_page=True)
+            pg.get_by_role("tab", name="Ativos").click()
+            assert pg.get_by_text("sem preço médio").first.is_visible(), "WEGE3 sem histórico deveria pedir preço médio"
+            pg.locator(".ativo-linha").first.click()
+            assert pg.get_by_role("dialog").is_visible()
+            pg.screenshot(path=str(SAIDA / f"{nome_tam}-45-investimentos-editar.png"))
+            pg.keyboard.press("Escape")
             # link público
             pg2 = nav.new_context(viewport={"width": w, "height": h}, reduced_motion="reduce").new_page()
             pg2.context.route("https://demo.supabase.co/**", responder)

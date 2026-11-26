@@ -15,3 +15,16 @@ select cron.schedule(
   );
   $$
 );
+
+-- Investimentos: cotações todo dia útil às 18h30 de Brasília (21:30 UTC) e foto mensal no 1º dia útil.
+select cron.schedule(
+  'investimentos-diario',
+  '30 21 * * 1-5',
+  $$
+  select net.http_post(
+    url := 'https://<ID-DO-PROJETO>.supabase.co/functions/v1/investimentos-diario',
+    headers := jsonb_build_object('Authorization', 'Bearer <CRON_SECRET>', 'Content-Type', 'application/json'),
+    body := '{}'::jsonb
+  );
+  $$
+);

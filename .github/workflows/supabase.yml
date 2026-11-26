@@ -1,4 +1,4 @@
-# Publica a função de avisos no Supabase a cada push na main.
+# Publica as funções (avisos e investimentos) no Supabase a cada push na main.
 # As migrations do banco são aplicadas pela integração GitHub do próprio Supabase.
 # Segredos do repositório (Settings → Secrets and variables → Actions):
 #   SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF
@@ -23,4 +23,6 @@ jobs:
         uses: supabase/setup-cli@v1
         with: { version: latest }
       - if: env.REF != ''
-        run: supabase functions deploy avisos-vencimento --no-verify-jwt --project-ref "$REF"
+        run: |
+          supabase functions deploy avisos-vencimento --no-verify-jwt --project-ref "$REF"
+          supabase functions deploy investimentos-diario --no-verify-jwt --project-ref "$REF"

@@ -176,5 +176,16 @@ do $$ begin
   begin perform importar_planilha('{"cartoes":[],"meses":[]}'::jsonb); raise exception 'deveria ter falhado';
   exception when others then if sqlerrm not like 'PLANILHA_JA_IMPORTADA%' then raise; end if; raise notice 'ok - planilha não é importada duas vezes'; end;
 end $$;
+-- Entrega 3: ajustes com auditoria e deduplicação de negociações
+set role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","aal":"aal2"}', false);
+insert into inv_ajustes (codigo, preco_medio) values ('PETR4', 30.5);
+update inv_ajustes set preco_medio = 31 where codigo = 'PETR4';
+select pg_temp.ok((select count(*) from audit_log where tabela = 'inv_ajustes') = 2, 'ajuste de PM é auditado');
+insert into inv_negociacoes (data, tipo, codigo, quantidade, preco, valor, chave) values ('2024-01-01','Compra','PETR4',10,30,300,'k1')
+  on conflict (user_id, chave) do nothing;
+insert into inv_negociacoes (data, tipo, codigo, quantidade, preco, valor, chave) values ('2024-01-01','Compra','PETR4',10,30,300,'k1')
+  on conflict (user_id, chave) do nothing;
+select pg_temp.ok((select count(*) from inv_negociacoes) = 1, 'reimportar a mesma negociação não duplica (RF-61)');
 reset role;
 select 'TODOS OS TESTES SQL PASSARAM' as resultado;
