@@ -1,6 +1,7 @@
 // Modo demonstração: responde às chamadas do Supabase com dados fictícios, sem rede e sem conta.
 // Usado só no arquivo de demonstração (npm run build:demo). Nunca entra no site publicado.
 import dados from './dados.json';
+import { memoriaDemo } from '../lib/supabase';
 
 type Linha = Record<string, unknown>;
 const tabelas = dados.tabelas as unknown as Record<string, Linha[]>;
@@ -9,7 +10,7 @@ const b64 = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/
 export function instalarDemo() {
   const exp = Math.floor(Date.now() / 1000) + 10 * 365 * 86400;
   const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: dados.usuario.id, aal: 'aal2', role: 'authenticated', exp, amr: [{ method: 'totp', timestamp: exp - 100 }] })}.demo`;
-  localStorage.setItem('sb-demo-auth-token', JSON.stringify({ access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'demo', user: dados.usuario }));
+  memoriaDemo.set('sb-demo-auth-token', JSON.stringify({ access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'demo', user: dados.usuario }));
 
   const original = window.fetch.bind(window);
   const json = (d: unknown, status = 200, extra: Record<string, string> = {}) => new Response(JSON.stringify(d), { status, headers: { 'content-type': 'application/json', ...extra } });
