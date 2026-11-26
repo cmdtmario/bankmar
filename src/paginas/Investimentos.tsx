@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { Area, AreaChart, Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { AlertTriangle, CalendarClock, FileUp, RefreshCw, Target, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CalendarClock, FileUp, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react';
 import { supabase, ok } from '../lib/supabase';
 import { carregarCarteira, importarArquivoB3, salvarAjuste, cotacoesAoVivo, historicoDe, INDICES, type Carteira } from '../lib/investimentos/dados';
 import { calcular, resumoDecisao, type Indicadores } from '../lib/investimentos/indicadores';
@@ -78,7 +78,7 @@ export function Investimentos() {
   const ind = useIndicadores(c);
 
   return (
-    <main>
+    <main className="largo">
       <div className="linha entre">
         <h1 style={{ margin: '8px 0' }}>Investimentos</h1>
         {c?.temDados && (
@@ -201,7 +201,7 @@ function Resumo({ c, ind }: { c: Carteira; ind: Map<string, Indicadores> }) {
                 <XAxis type="number" hide />
                 <YAxis type="category" dataKey="nome" width={110} tick={{ fill: TEMA.texto, fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<Dica />} cursor={{ fill: 'rgba(212,171,92,.08)' }} />
-                <Bar dataKey="valor" name="Valor" fill={TEMA.ouro} radius={[0, 4, 4, 0]} isAnimationActive={!reduzir} />
+                <Bar dataKey="valor" name="Valor" fill="#6e6455" radius={[0, 3, 3, 0]} barSize={14} isAnimationActive={!reduzir} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -231,7 +231,7 @@ function Resumo({ c, ind }: { c: Carteira; ind: Map<string, Indicadores> }) {
           {top10.map((t) => (
             <div key={t.nome} style={{ marginBottom: 6 }}>
               <div className="linha entre" style={{ fontSize: '.9rem' }}><span>{t.nome}</span><span className="num">{pctBR(t.pct)}</span></div>
-              <div className="barra"><div style={{ width: `${Math.min(100, t.pct * 100 / Math.max(top10[0]?.pct ?? 1, 0.0001))}%` }} /></div>
+              <div className="barra discreta"><div style={{ width: `${Math.min(100, t.pct * 100 / Math.max(top10[0]?.pct ?? 1, 0.0001))}%` }} /></div>
             </div>
           ))}
         </section>
@@ -261,77 +261,153 @@ function AltasBaixas({ c, ind }: { c: Carteira; ind: Map<string, Indicadores> })
 }
 
 // ---------------------------------------------------------------------------
+type Metrica = 'dia' | 'compra' | 'total';
+const METRICAS: [Metrica, string][] = [['dia', 'Hoje'], ['compra', 'Desde a compra'], ['total', 'Com proventos']];
+type Coluna = 'ativo' | 'preco' | 'dia' | 'pm' | 'compra' | 'proventos' | 'total' | 'valor' | 'peso';
+const COLUNAS: [Coluna, string][] = [['ativo', 'Ativo'], ['preco', 'Preço'], ['dia', 'Hoje'], ['pm', 'Preço médio'], ['compra', 'Desde a compra'], ['proventos', 'Proventos'], ['total', 'Retorno c/ proventos'], ['valor', 'Valor'], ['peso', 'Peso']];
+
 function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores>; onSalvo: () => void }) {
-  const classesPresentes = [...new Set(c.ativos.map((a) => a.classe))];
   const [filtro, setFiltro] = useState<Classe | 'todas' | 'incompletos'>('todas');
-  const [ordem, setOrdem] = useState<'valor' | 'dia' | 'resultado' | 'total' | 'proventos' | 'dy'>('valor');
+  const [ordem, setOrdem] = useState<{ col: Coluna; desc: boolean }>({ col: 'valor', desc: true });
+  const [metrica, setMetrica] = useState<Metrica>('dia');
   const [edit, setEdit] = useState<Ativo | null>(null);
+  const [foco, setFoco] = useState<string | null>(null);
   const negociavel = (a: Ativo) => NEGOCIAVEL.includes(a.classe);
-  const chave = (a: Ativo): number => {
-    const i = ind.get(a.codigo);
-    switch (ordem) {
-      case 'dia': return i?.varDia ?? -9;
-      case 'resultado': return i?.varEntrada ?? a.resultadoPct ?? -9;
-      case 'total': return i?.retornoTotalPct ?? -9;
-      case 'proventos': return i?.proventosTotal ?? 0;
-      case 'dy': return i?.dy12m ?? -9;
-      default: return a.mercado;
+  const precoDe = (a: Ativo) => (negociavel(a) ? (c.cotacoes.get(a.codigo)?.preco ?? a.preco) : null);
+  const valorCol = (a: Ativo, col: Coluna): number | string => {
+    const i = ind.get(a.codigo)!;
+    switch (col) {
+      case 'ativo': return a.codigo;
+      case 'preco': return precoDe(a) ?? -Infinity;
+      case 'dia': return i.varDia ?? -Infinity;
+      case 'pm': return a.pm ?? -Infinity;
+      case 'compra': return i.varEntrada ?? a.resultadoPct ?? -Infinity;
+      case 'proventos': return i.proventosTotal;
+      case 'total': return i.retornoTotalPct ?? -Infinity;
+      case 'peso': case 'valor': return a.mercado;
     }
   };
-  const lista = c.ativos
-    .filter((a) => filtro === 'todas' || (filtro === 'incompletos' ? negociavel(a) && a.pm == null : a.classe === filtro))
-    .sort((x, y) => chave(y) - chave(x));
+  const ordenar = (lista: Ativo[]) => [...lista].sort((x, y) => {
+    const vx = valorCol(x, ordem.col), vy = valorCol(y, ordem.col);
+    const r = typeof vx === 'string' ? vx.localeCompare(String(vy)) : (vx as number) - (vy as number);
+    return ordem.desc ? -r : r;
+  });
+  const visiveis = c.ativos.filter((a) => filtro === 'todas' || (filtro === 'incompletos' ? negociavel(a) && a.pm == null : a.classe === filtro));
+  const total = somaCentavos([c.totalB3, c.totalManual]);
+  const grupos = [...new Set(visiveis.map((a) => a.classe))]
+    .map((classe) => ({ classe, itens: ordenar(visiveis.filter((a) => a.classe === classe)), valor: somaCentavos(visiveis.filter((a) => a.classe === classe).map((a) => a.mercado)) }))
+    .sort((x, y) => y.valor - x.valor);
   const incompletos = c.ativos.filter((a) => negociavel(a) && a.pm == null).length;
+  const classes = [...new Set(c.ativos.map((a) => a.classe))];
+  const ativoFoco = c.ativos.find((a) => a.codigo === foco) ?? grupos[0]?.itens[0] ?? null;
+  const clicarCol = (col: Coluna) => setOrdem((o) => ({ col, desc: o.col === col ? !o.desc : col !== 'ativo' }));
+  const metricaDe = (a: Ativo): number | null => { const i = ind.get(a.codigo)!; return metrica === 'dia' ? i.varDia : metrica === 'compra' ? (i.varEntrada ?? a.resultadoPct) : i.retornoTotalPct; };
+  const pctOuTraco = (v: number | null | undefined) => (v == null ? <span className="vazio-num">—</span> : <span className={classeVar(v)}>{sinalPct(v)}</span>);
+
   return (
     <>
-      {incompletos > 0 && (
-        <div className="aviso"><AlertTriangle size={15} aria-hidden="true" /> {incompletos} ativo(s) sem preço médio: o histórico da B3 não explica a quantidade atual (compras em IPO, ofertas ou conversões). Informe o preço médio tocando no ativo ou use a conferência com a planilha antiga em “Importar”.</div>
-      )}
-      <div className="chips" role="group" aria-label="Filtrar por classe">
-        <button className={filtro === 'todas' ? 'ativo' : ''} onClick={() => setFiltro('todas')}>Todas</button>
-        {classesPresentes.map((k) => <button key={k} className={filtro === k ? 'ativo' : ''} onClick={() => setFiltro(k)}>{NOME_CLASSE[k]}</button>)}
-        {incompletos > 0 && <button className={filtro === 'incompletos' ? 'ativo' : ''} onClick={() => setFiltro('incompletos')}>Sem preço médio</button>}
+      <div className="filtros-ativos">
+        <div className="abas-texto" role="group" aria-label="Filtrar por classe">
+          <button aria-pressed={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todos</button>
+          {classes.map((k) => <button key={k} aria-pressed={filtro === k} onClick={() => setFiltro(k)}>{NOME_CLASSE[k]}</button>)}
+        </div>
+        {incompletos > 0 && (
+          <button className="alerta-linha" aria-pressed={filtro === 'incompletos'} onClick={() => setFiltro(filtro === 'incompletos' ? 'todas' : 'incompletos')}>
+            <AlertTriangle size={14} aria-hidden="true" /> {incompletos === 1 ? '1 ativo sem preço médio' : `${incompletos} ativos sem preço médio`}
+          </button>
+        )}
       </div>
-      <div className="linha" style={{ margin: '6px 0 10px' }}>
-        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>Ordenar por
-          <select value={ordem} onChange={(e) => setOrdem(e.target.value as typeof ordem)}>
-            <option value="valor">valor</option><option value="dia">variação do dia</option><option value="resultado">variação desde a compra</option>
-            <option value="total">retorno com proventos</option><option value="proventos">proventos recebidos</option><option value="dy">dividend yield 12m</option>
-          </select>
-        </label>
+      {filtro === 'incompletos' && <p className="sub">O histórico da B3 não explica a quantidade atual destes ativos (IPO, oferta ou conversão). Abra o ativo para informar o preço médio, ou use “Conferir com a planilha antiga” em Importar.</p>}
+
+      {/* Celular: lista em duas linhas, uma métrica por vez */}
+      <div className="so-celular">
+        <div className="metricas" role="radiogroup" aria-label="Variação mostrada">
+          <span className="sub metricas-rotulo">Variação</span>
+          {METRICAS.map(([k, t]) => <button key={k} role="radio" aria-checked={metrica === k} onClick={() => setMetrica(k)}>{t}</button>)}
+        </div>
+        {grupos.map((g) => (
+          <section key={g.classe} className="grupo">
+            <h3 className="grupo-titulo"><span>{NOME_CLASSE[g.classe]}</span><span className="num">{brl(g.valor)}</span></h3>
+            <ul className="razao">
+              {g.itens.map((a) => {
+                const p = precoDe(a);
+                return (
+                  <li key={a.codigo}>
+                    <button className="razao-linha" onClick={() => setEdit(a)}>
+                      <span className="razao-cod">{a.codigo}{negociavel(a) && a.pm == null && <AlertTriangle size={13} className="icone-alerta" aria-label="sem preço médio" />}</span>
+                      <span className="razao-valor num">{brl(a.mercado)}</span>
+                      <span className="razao-det">{negociavel(a) ? `${a.quantidade.toLocaleString('pt-BR')} × ${p != null ? brl(p) : '—'}` : a.nome.slice(0, 28)}</span>
+                      <span className="razao-var num">{pctOuTraco(metricaDe(a))}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
       </div>
-      <p className="sub dica-hover">Passe o mouse sobre um ativo para ver o resumo de venda; clique para ver os detalhes e o gráfico.</p>
-      {lista.map((a) => {
-        const i = ind.get(a.codigo)!;
-        const preco = negociavel(a) ? (c.cotacoes.get(a.codigo)?.preco ?? a.preco) : null;
-        return (
-          <div key={a.codigo} className="ativo-envoltorio">
-            <button className="card ativo-linha" onClick={() => setEdit(a)} aria-describedby={`vis-${a.codigo}`}>
-              <div className="grow" style={{ textAlign: 'left', minWidth: 0 }}>
-                <strong>{a.codigo}</strong> <span className="sub">{a.nome.slice(0, 34)}</span>
-                <div className="sub">
-                  {negociavel(a) ? `${a.quantidade.toLocaleString('pt-BR')} × ${preco != null ? brl(preco) : '—'}` : NOME_CLASSE[a.classe]}
-                  {a.pm != null && negociavel(a) && ` · PM ${brl(a.pm)}`}
-                  {negociavel(a) && a.pm == null && <span style={{ color: 'var(--alerta)' }}> · sem preço médio</span>}
-                  {i.proventosTotal ? ` · proventos ${brl(i.proventosTotal)}` : ''}
-                  {a.alvo != null && <span className={a.atingiuAlvo ? 'pos' : ''}> · <Target size={12} aria-hidden="true" /> alvo {brl(a.alvo)}{a.atingiuAlvo ? ' atingido' : ''}</span>}
-                </div>
-              </div>
-              <div className="num">
-                <strong>{brl(a.mercado)}</strong>
-                {i.varDia != null && <div className={`etiqueta-var ${classeVar(i.varDia)}`}>hoje {sinalPct(i.varDia)}</div>}
-                {i.varEntrada != null ? <div className={classeVar(i.varEntrada)} style={{ fontSize: '.82rem' }}>desde a compra {sinalPct(i.varEntrada)}</div>
-                  : a.resultadoPct != null && <div className={classeVar(a.resultadoPct)} style={{ fontSize: '.82rem' }}>{sinalPct(a.resultadoPct)}</div>}
-              </div>
-            </button>
-            <div className="visao" id={`vis-${a.codigo}`} role="tooltip">
-              {resumoDecisao(a, i, preco).map((t, k) => <p key={k}>{t}</p>)}
-            </div>
-          </div>
-        );
-      })}
+
+      {/* Computador: livro-razão com colunas e painel do ativo sob o mouse */}
+      <div className="so-computador razao-mesa">
+        <div className="razao-tabela">
+          <table>
+            <thead>
+              <tr>{COLUNAS.map(([k, t]) => (
+                <th key={k} className={k === 'ativo' ? '' : 'num'} aria-sort={ordem.col === k ? (ordem.desc ? 'descending' : 'ascending') : 'none'}>
+                  <button className="cabecalho" onClick={() => clicarCol(k)}>{t}{ordem.col === k && <span aria-hidden="true">{ordem.desc ? ' ↓' : ' ↑'}</span>}</button>
+                </th>
+              ))}</tr>
+            </thead>
+            {grupos.map((g) => (
+              <tbody key={g.classe}>
+                <tr className="linha-grupo"><th colSpan={7} scope="rowgroup">{NOME_CLASSE[g.classe]} <span className="sub">{g.itens.length}</span></th><td className="num">{brl(g.valor)}</td><td className="num">{pctBR(total ? g.valor / total : 0)}</td></tr>
+                {g.itens.map((a) => {
+                  const i = ind.get(a.codigo)!;
+                  const p = precoDe(a);
+                  return (
+                    <tr key={a.codigo} className={foco === a.codigo ? 'focado' : ''} tabIndex={0}
+                      onMouseEnter={() => setFoco(a.codigo)} onFocus={() => setFoco(a.codigo)} onClick={() => setEdit(a)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') setEdit(a); }}>
+                      <td><strong>{a.codigo}</strong>{negociavel(a) && a.pm == null && <AlertTriangle size={13} className="icone-alerta" aria-label="sem preço médio" />}<div className="sub nome-ativo">{negociavel(a) ? `${a.quantidade.toLocaleString('pt-BR')} cotas` : a.nome.slice(0, 26)}</div></td>
+                      <td className="num">{p != null ? brl(p) : <span className="vazio-num">—</span>}</td>
+                      <td className="num">{pctOuTraco(i.varDia)}</td>
+                      <td className="num">{a.pm != null ? brl(a.pm) : <span className="vazio-num">—</span>}</td>
+                      <td className="num">{pctOuTraco(i.varEntrada ?? a.resultadoPct)}</td>
+                      <td className="num">{i.proventosTotal ? brl(i.proventosTotal) : <span className="vazio-num">—</span>}</td>
+                      <td className="num">{pctOuTraco(i.retornoTotalPct)}</td>
+                      <td className="num"><strong>{brl(a.mercado)}</strong></td>
+                      <td className="num sub">{pctBR(i.peso)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            ))}
+          </table>
+        </div>
+        {ativoFoco && <Inspetor a={ativoFoco} i={ind.get(ativoFoco.codigo)!} preco={precoDe(ativoFoco)} onAbrir={() => setEdit(ativoFoco)} />}
+      </div>
       {edit && <EditarAtivo a={edit} c={c} i={ind.get(edit.codigo)!} onFechar={() => setEdit(null)} onSalvo={() => { setEdit(null); onSalvo(); }} />}
     </>
+  );
+}
+
+/** Painel lateral: o resumo de venda do ativo sob o mouse (ou com foco do teclado). */
+function Inspetor({ a, i, preco, onAbrir }: { a: Ativo; i: Indicadores; preco: number | null; onAbrir: () => void }) {
+  const frases = resumoDecisao(a, i, preco);
+  return (
+    <aside className="inspetor" aria-live="polite">
+      <div className="inspetor-cab">
+        <div><strong className="inspetor-cod">{a.codigo}</strong><div className="sub">{a.nome.slice(0, 40)}</div></div>
+        {preco != null && <div className="num"><div className="inspetor-preco">{brl(preco)}</div>{i.varDia != null && <div className={classeVar(i.varDia)}>{sinalPct(i.varDia)} hoje</div>}</div>}
+      </div>
+      <dl className="inspetor-numeros">
+        <div><dt>Resultado do preço</dt><dd className={classeVar(i.resultadoPreco)}>{i.resultadoPreco != null ? sinalBrl(i.resultadoPreco) : '—'}</dd></div>
+        <div><dt>Proventos recebidos</dt><dd>{brl(i.proventosTotal)}</dd></div>
+        <div className="soma"><dt>Resultado com proventos</dt><dd className={classeVar(i.retornoTotal)}>{i.retornoTotal != null ? sinalBrl(i.retornoTotal) : '—'}</dd></div>
+      </dl>
+      <ul className="inspetor-frases">{frases.slice(i.varDia != null ? 1 : 0).map((f, k) => <li key={k}>{f}</li>)}</ul>
+      <button className="pequeno" onClick={onAbrir}>Abrir gráfico e indicadores</button>
+    </aside>
   );
 }
 

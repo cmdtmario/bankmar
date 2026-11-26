@@ -223,13 +223,13 @@ def main():
             pg.get_by_role("tab", name="Ativos").click()
             assert pg.get_by_text("sem preço médio").first.is_visible(), "WEGE3 sem histórico deveria pedir preço médio"
             assert pg.get_by_text("Sua carteira hoje").is_visible(), "faixa do mercado ausente"
+            linha = pg.locator(".razao-linha:visible, .razao-tabela tbody tr:visible", has_text="HGLG11").first
             if nome_tam == "desktop":
-                pg.locator(".ativo-envoltorio", has_text="HGLG11").evaluate("e => e.scrollIntoView({block: 'center'})")
-                pg.locator(".ativo-envoltorio", has_text="HGLG11").locator(".ativo-linha").hover()
-                pg.wait_for_timeout(300)
-                assert pg.locator(".ativo-envoltorio", has_text="HGLG11").locator(".visao").is_visible(), "resumo de venda não aparece ao passar o mouse"
+                linha.hover()
+                pg.wait_for_timeout(200)
+                assert pg.locator(".inspetor").get_by_text("Se vender hoje").first.is_visible(), "painel do ativo não mostra o resumo de venda"
                 pg.screenshot(path=str(SAIDA / f"{nome_tam}-44-investimentos-hover.png"))
-            pg.locator(".ativo-envoltorio", has_text="HGLG11").locator(".ativo-linha").click()
+            linha.click()
             assert pg.get_by_role("dialog").is_visible()
             pg.wait_for_timeout(800)
             assert pg.get_by_text("Preço de equilíbrio").is_visible()

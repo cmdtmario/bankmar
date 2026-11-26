@@ -17,5 +17,5 @@ export const TEMA = {
   erro: '#ef7d6d',
   /** Série categórica dos gráficos (do mais claro ao mais escuro, mais diferenças de luz que de tom). */
   serie: ['#f3d891', '#d4ab5c', '#a9792f', '#cbbfa6', '#7d6a4a', '#5c5345'],
-  fontes: { titulos: 'Cinzel', texto: 'Inter' },
+  fontes: { titulos: 'Cinzel', texto: 'IBM Plex Sans' },
 } as const;

@@ -154,31 +154,8 @@ nav.abas a:active { opacity: .75; }
 .chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; }
 .chips button { min-height: 36px; border-radius: 999px; padding: 0 14px; white-space: nowrap; }
 .chips button.ativo { background: var(--ouro); color: #1a1408; border-color: var(--ouro); }
-.ativo-linha { display: flex; gap: 10px; align-items: center; width: 100%; color: inherit; font: inherit; cursor: pointer; margin-bottom: 8px; }
-.ativo-linha:hover { border-color: var(--ouro-escuro); }
-.ativo-linha .num { text-align: right; white-space: nowrap; }
 
 /* Investimentos: mercado ao vivo e visão de decisão */
-.faixa { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 4px; }
-.faixa-item { background: var(--card); border: 1px solid var(--linha); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
-.faixa-item strong { font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.faixa-item .sub { font-size: .78rem; }
-.faixa-status { grid-column: 1 / -1; margin: 2px 0 0; font-size: .78rem; }
-.pulso { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 4px; animation: pulso 2s infinite; }
-@keyframes pulso { 0% { box-shadow: 0 0 0 0 rgba(111,207,151,.6); } 70% { box-shadow: 0 0 0 7px rgba(111,207,151,0); } 100% { box-shadow: 0 0 0 0 rgba(111,207,151,0); } }
-@media (prefers-reduced-motion: reduce) { .pulso { animation: none; } }
-@media (max-width: 520px) { .faixa { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.etiqueta-var { font-size: .8rem; font-weight: 600; }
-.ativo-envoltorio { position: relative; }
-.visao { display: none; }
-.visao p, .visao-fixa p { margin: 0 0 4px; }
-@media (hover: hover) and (pointer: fine) {
-  .visao { display: block; position: absolute; left: 12px; right: 12px; top: calc(100% - 6px); z-index: 5; background: #17140f; border: 1px solid var(--ouro-escuro);
-    border-radius: 12px; padding: 10px 12px; font-size: .88rem; box-shadow: 0 12px 30px rgba(0,0,0,.6); opacity: 0; visibility: hidden; transform: translateY(-4px);
-    transition: opacity .15s, transform .15s, visibility .15s; pointer-events: none; }
-  .ativo-envoltorio:hover .visao, .ativo-envoltorio:focus-within .visao { opacity: 1; visibility: visible; transform: none; }
-}
-@media not ((hover: hover) and (pointer: fine)) { .dica-hover { display: none; } }
 .visao-fixa { background: #17140f; border: 1px solid var(--ouro-escuro); border-radius: 12px; padding: 10px 12px; font-size: .9rem; margin-bottom: 8px; }
 .indicadores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; margin: 10px 0; }
 .indicadores div { border-bottom: 1px solid var(--linha); padding: 4px 0; }
@@ -187,3 +164,115 @@ nav.abas a:active { opacity: .75; }
 @media (min-width: 720px) { .indicadores { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 .faixa-demo { background: var(--ouro); color: #1a1408; text-align: center; font-size: .78rem; font-weight: 600; padding: 4px 8px; }
+
+/* ==== Refino visual (ui-ux-pro-max + frontend-design) ====
+   Voz: livro-razão de private banking — calmo, preciso, números em primeiro plano.
+   Ouro só para marca, seleção, foco e o número principal. Uma família no app (IBM Plex Sans);
+   Cinzel fica só na marca e no patrimônio. Verde/vermelho suaves, só em números de variação. */
+:root {
+  --bg: #0b0b0a; --card: #131311; --card2: #131311; --txt: #ece7dc; --sub: #8d867a; --linha: #24221e; --linha-forte: #34302a;
+  --ganho: #8cc9a1; --perda: #e5927f;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+body { background: var(--bg); }
+h1, h2, h3 { font-family: inherit; letter-spacing: 0; color: var(--txt); font-weight: 600; }
+h1 { font-size: 1.3rem; }
+h2 { font-size: 1rem; }
+h2 svg { color: var(--sub); }
+strong { color: var(--txt); font-weight: 600; }
+.card, .destaque { background: var(--card); box-shadow: none; border-radius: 12px; }
+th { color: var(--sub); font-weight: 500; font-size: .8rem; }
+.pos { color: var(--ganho) !important; }
+.neg { color: var(--perda) !important; }
+.resumo-numeros dd { font-family: inherit; font-weight: 600; font-variant-numeric: tabular-nums; }
+button.pri, .botao-arquivo { background: var(--ouro); }
+.barra > div { background: var(--ouro); }
+.titulo-pagina { font-family: inherit; letter-spacing: 0; }
+.linha.entre > h1 { text-align: left; }
+nav.abas a.active { color: var(--txt); }
+main.largo { max-width: 1180px; }
+
+/* Faixa do mercado: uma linha de cotações, sem caixas */
+.faixa { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha); margin: 4px 0 6px; }
+.faixa-item { display: flex; flex-direction: column; padding: 10px 12px; min-width: 0; }
+.faixa-item + .faixa-item { border-left: 1px solid var(--linha); }
+.faixa-item .sub { font-size: .78rem; }
+.faixa-item strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.faixa-status { grid-column: 1 / -1; margin: 0; padding: 6px 12px; border-top: 1px solid var(--linha); font-size: .78rem; }
+.pulso { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ganho); margin-right: 4px; vertical-align: 1px; animation: pulso 2s infinite; }
+@keyframes pulso { 0% { box-shadow: 0 0 0 0 rgba(140,201,161,.6); } 70% { box-shadow: 0 0 0 7px rgba(140,201,161,0); } 100% { box-shadow: 0 0 0 0 rgba(140,201,161,0); } }
+@media (max-width: 600px) {
+  .faixa { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .faixa-item:nth-child(3) { border-left: 0; }
+  .faixa-item:nth-child(n+3) { border-top: 1px solid var(--linha); }
+}
+
+/* Abas de seção e filtros em texto, sem pílulas */
+.segmentos { background: none; border: 0; border-bottom: 1px solid var(--linha); border-radius: 0; padding: 0; gap: 0; margin: 6px 0 14px; }
+.segmentos button { flex: 0 0 auto; min-height: 44px; border-radius: 0; padding: 0 14px; color: var(--sub); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.segmentos button.ativo { background: none; color: var(--txt); font-weight: 600; border-bottom-color: var(--ouro); }
+.filtros-ativos { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.abas-texto { display: flex; gap: 2px; overflow-x: auto; max-width: 100%; }
+.abas-texto button, .metricas button { border: 0; background: none; color: var(--sub); min-height: 40px; padding: 0 10px; border-radius: 8px; white-space: nowrap; }
+.abas-texto button[aria-pressed="true"], .metricas button[aria-checked="true"] { color: var(--txt); background: #1d1b18; font-weight: 600; }
+.alerta-linha { border: 0; background: none; color: var(--alerta); display: inline-flex; align-items: center; gap: 6px; padding: 0 6px; min-height: 40px; }
+.alerta-linha[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 3px; }
+.icone-alerta { color: var(--alerta); margin-left: 5px; vertical-align: -1px; }
+.vazio-num { color: #4d4840; }
+
+/* Celular: livro-razão em duas linhas */
+.so-computador { display: none; }
+.metricas { display: flex; gap: 2px; margin: 4px 0 8px; }
+.grupo { margin-bottom: 14px; }
+.grupo-titulo { display: flex; justify-content: space-between; font-size: .82rem; font-weight: 500; color: var(--sub); margin: 0; padding: 8px 0 6px; border-bottom: 1px solid var(--linha-forte); }
+.razao { list-style: none; margin: 0; padding: 0; }
+.razao li { border-bottom: 1px solid var(--linha); }
+.razao-linha { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "c v" "d p"; gap: 2px 12px; width: 100%; border: 0; background: none; border-radius: 0; padding: 10px 2px; text-align: left; min-height: 56px; }
+.razao-linha:hover { background: #151412; }
+.razao-cod { grid-area: c; font-weight: 600; }
+.razao-valor { grid-area: v; font-weight: 600; }
+.razao-det { grid-area: d; color: var(--sub); font-size: .85rem; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.razao-var { grid-area: p; font-size: .9rem; }
+
+/* Computador: tabela + painel do ativo */
+@media (min-width: 900px) {
+  .so-celular { display: none; }
+  .so-computador { display: block; }
+  .razao-mesa { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+}
+@media (min-width: 1140px) { .razao-mesa { grid-template-columns: minmax(0, 1fr) 300px; } }
+.razao-tabela table { font-variant-numeric: tabular-nums; }
+.razao-tabela th, .razao-tabela td { padding: 9px 8px; border-bottom: 1px solid var(--linha); vertical-align: middle; font-size: .9rem; }
+.razao-tabela thead th { position: sticky; top: 49px; background: var(--bg); z-index: 1; border-bottom-color: var(--linha-forte); padding: 0; }
+.cabecalho { border: 0; background: none; color: var(--sub); font-size: .78rem; font-weight: 500; min-height: 36px; padding: 0 8px; width: 100%; text-align: inherit; border-radius: 0; }
+th.num .cabecalho { text-align: right; }
+th[aria-sort="ascending"] .cabecalho, th[aria-sort="descending"] .cabecalho { color: var(--txt); }
+.razao-tabela .linha-grupo th, .razao-tabela .linha-grupo td { padding-top: 18px; font-size: .82rem; color: var(--sub); font-weight: 500; border-bottom-color: var(--linha-forte); }
+.razao-tabela tbody tr:not(.linha-grupo) { cursor: pointer; }
+.razao-tabela tbody tr:not(.linha-grupo):hover, .razao-tabela tr.focado { background: #161512; }
+.razao-tabela tr.focado td:first-child { box-shadow: inset 2px 0 0 var(--ouro); }
+.razao-tabela tr:focus-visible { outline: 2px solid var(--ouro-claro); outline-offset: -2px; }
+.nome-ativo { font-size: .78rem; }
+.inspetor { display: none; }
+@media (min-width: 1140px) {
+  .inspetor { display: block; position: sticky; top: 64px; border-left: 1px solid var(--linha); padding: 4px 0 4px 20px; }
+}
+.inspetor-cab { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+.inspetor-cod { font-size: 1.15rem; }
+.inspetor-preco { font-size: 1.15rem; font-weight: 600; }
+.inspetor-numeros { margin: 0 0 12px; }
+.inspetor-numeros div { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--linha); font-size: .9rem; }
+.inspetor-numeros dt { color: var(--sub); }
+.inspetor-numeros dd { margin: 0; font-variant-numeric: tabular-nums; }
+.inspetor-numeros .soma { border-bottom: 0; border-top: 1px solid var(--linha-forte); font-weight: 600; }
+.inspetor-numeros .soma dt { color: var(--txt); }
+.inspetor-frases { margin: 0 0 12px; padding: 0 0 0 16px; color: #c9c2b5; font-size: .88rem; line-height: 1.5; }
+.inspetor-frases li { margin-bottom: 6px; }
+.visao-fixa { background: none; border: 0; border-left: 2px solid var(--ouro); border-radius: 0; padding: 2px 0 2px 12px; color: #c9c2b5; }
+.indicadores div { border-bottom-color: var(--linha); }
+.razao-tabela td:first-child { white-space: nowrap; }
+.metricas { align-items: center; justify-content: flex-end; }
+.metricas-rotulo { margin-right: auto; }
+.metricas button { min-height: 34px; font-size: .85rem; padding: 0 9px; }
+.barra.discreta { height: 4px; background: var(--linha); }
+.barra.discreta > div { background: #8a7d66; }
