@@ -305,3 +305,30 @@ export function lerAbaIrrf(dados: ArrayBuffer | Uint8Array): { mensal: Mensal[];
 
 /** Mesmo critério do banco: sem acento, maiúsculas e sem a palavra "Previdência". */
 export const normPlano = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\s*previdencia(\s+privada)?\s*[-:]?\s*/i, '').replace(/\s+/g, ' ').trim().toUpperCase();
+
+/**
+ * PGBL: quanto falta para o teto de dedução (12% da renda tributável do ano).
+ * Sem renda informada, estima o ano: o que já foi lançado (líquido + INSS + IR retido, mais férias e 13º)
+ * e, para os meses ainda sem folha, a média dos meses lançados (só salário, sem férias/13º).
+ */
+export function tetoPgbl(mensal: Mensal[], prev: Previdencia[], rendaInformada: number | null, ano: number, hoje: string, p: Parametros = PARAMETROS_PADRAO) {
+  const doAno = mensal.filter((m) => m.competencia.startsWith(String(ano)));
+  const n = (v: number | null | undefined) => Number(v) || 0;
+  const salario = (m: Mensal) => n(m.salario_liquido) + n(m.inss_folha) + n(m.ir_folha) + n(m.ir_vinculo_unico);
+  const extras = (m: Mensal) => n(m.ferias_terco) + n(m.decimo_terceiro) + n(m.inss_ferias) + n(m.ir_ferias);
+  const comSalario = doAno.filter((m) => n(m.salario_liquido) > 0);
+  const mesesLancados = new Set(comSalario.map((m) => m.competencia.slice(0, 7))).size;
+  const media = comSalario.length ? comSalario.reduce((s, m) => s + salario(m), 0) / comSalario.length : 0;
+  const estimada = r2(doAno.reduce((s, m) => s + salario(m) + extras(m), 0) + media * Math.max(0, 12 - mesesLancados));
+  const base = rendaInformada ?? (estimada || null);
+  const teto = base != null ? r2(base * p.limite_pgbl_pct / 100) : null;
+  const contribuido = r2(prev.filter((x) => x.tipo === 'PGBL' && x.competencia.startsWith(String(ano))).reduce((s, x) => s + x.valor, 0));
+  const falta = teto != null ? r2(teto - contribuido) : null;
+  const mesAtual = hoje.startsWith(String(ano)) ? Number(hoje.slice(5, 7)) : hoje < `${ano}` ? 1 : 13;
+  const mesesRestantes = Math.max(0, 12 - mesAtual + 1);
+  return {
+    base, baseEstimada: rendaInformada == null, teto, contribuido, falta,
+    pct: teto ? contribuido / teto : null, mesesRestantes,
+    porMes: falta != null && falta > 0 && mesesRestantes ? r2(falta / mesesRestantes) : 0,
+  };
+}

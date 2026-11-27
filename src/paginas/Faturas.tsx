@@ -65,7 +65,7 @@ export function Faturas() {
           <div className="fatura-bloco" key={k.id}>
             <div className="linha entre">
               <div className="grow">
-                <strong className="com-logo"><Logo nome={k.apelido} />{k.apelido}</strong>{k.final4 && <span className="sub"> · final {k.final4}</span>}
+                <strong className="com-logo"><Logo nome={k.apelido} sempre />{k.apelido}</strong>{k.final4 && <span className="sub"> · final {k.final4}</span>}
                 <div className="sub">
                   {r?.confirmada ? `importada · ${r.qtd_linhas} lançamentos · vence ${dataBR(r.vencimento)}` : r?.qtd_projetadas ? `${r.qtd_projetadas} parcela(s) prevista(s)` : 'sem fatura'}
                   {k.emissor === 'outro' && ' · leitor automático genérico'}

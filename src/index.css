@@ -422,3 +422,37 @@ nav.abas button.active svg { color: var(--ouro); }
 .renda-ir > div { display: flex; justify-content: space-between; align-items: baseline; }
 .renda-ir strong { font-size: 1.1rem; }
 .renda-ir p { margin: 4px 0 0; }
+.zerada-box { border-left: 2px solid var(--ganho); padding: 2px 0 2px 12px; margin: 6px 0; }
+.zerada-box p { margin: 0 0 6px; }
+label.check { flex-direction: row; align-items: center; gap: 10px; min-height: 44px; color: var(--txt); }
+label.check input { width: 20px; height: 20px; accent-color: var(--ouro); }
+
+/* PGBL: quanto falta para o teto */
+.pgbl { border-top: 1px solid var(--linha-forte); border-bottom: 1px solid var(--linha); padding: 12px 2px; margin: 10px 0 14px; }
+.pgbl h2 { display: flex; align-items: center; gap: 8px; }
+.pgbl-falta { display: flex; flex-direction: column; margin: 8px 0 6px; }
+.pgbl-falta strong { font-family: var(--serif); font-size: clamp(1.5rem, 6vw, 2rem); color: var(--ouro-claro); font-weight: 600; }
+.pgbl-falta strong.alerta-txt { color: var(--alerta); }
+.pgbl-barra { height: 8px; }
+.pgbl-numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; }
+.pgbl-numeros dt { font-size: .76rem; color: var(--sub); }
+.pgbl-numeros dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Milhas: painel por programa */
+.chips-programas { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 10px; scrollbar-width: thin; }
+.chips-programas button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; background: transparent; border: 1px solid var(--linha); border-radius: 999px; padding: 5px 12px 5px 5px; color: var(--txt); }
+.chips-programas button.ativo { border-color: var(--ouro); background: color-mix(in srgb, var(--ouro) 12%, transparent); }
+.painel-prog { border-top: 1px solid var(--linha-forte); padding-top: 12px; margin-bottom: 10px; }
+.painel-prog-topo { display: flex; align-items: center; gap: 12px; }
+.painel-prog-saldo { margin-left: auto; text-align: right; display: flex; flex-direction: column; }
+.painel-prog-saldo strong { font-family: var(--serif); font-size: clamp(1.5rem, 6vw, 2.1rem); color: var(--ouro-claro); font-variant-numeric: tabular-nums; font-weight: 600; }
+.kpis-prog { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 16px; margin: 14px 0 10px; }
+.kpis-prog dt { font-size: .76rem; color: var(--sub); }
+.kpis-prog dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.acoes-prog { display: flex; flex-wrap: wrap; gap: 6px; }
+.acoes-prog button { display: inline-flex; align-items: center; gap: 4px; }
+.grade-milhas table { font-size: .84rem; }
+.grade-milhas td, .grade-milhas th { padding: 6px 8px; white-space: nowrap; }
+.grade-milhas tfoot th { border-top: 1px solid var(--linha-forte); }
+.lista-programas { list-style: none; padding: 0; margin: 0 0 8px; display: flex; flex-direction: column; gap: 2px; }
+.lista-programas label.check { display: flex; align-items: center; gap: 10px; padding: 6px 2px; border-bottom: 1px solid var(--linha); }

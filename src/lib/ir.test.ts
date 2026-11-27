@@ -93,3 +93,18 @@ describe.runIf(fs.existsSync(U + '1ef58c99-movimentacao-2026-11-25-10-43-21.xlsx
     expect(noRelatorio).toBeCloseTo(esperado, 1);
   });
 });
+
+import { tetoPgbl } from './ir';
+describe('Teto do PGBL', () => {
+  const m = (mes: number, liq: number, extra: Partial<Record<string, number>> = {}) => ({ competencia: `2026-${String(mes).padStart(2, '0')}-01`, recebido_em: null, salario_liquido: liq, ferias_terco: null, inss_folha: 1000, inss_ferias: null, ir_folha: 3000, ir_ferias: null, ir_vinculo_unico: null, plano_saude: null, odontologico: null, ensino: null, medico_fora: null, obs_medico: null, ...extra });
+  const prev = [{ competencia: '2026-01-01', plano: 'PORTO', tipo: 'PGBL' as const, valor: 2000 }, { competencia: '2026-02-01', plano: 'X', tipo: 'VGBL' as const, valor: 999 }];
+  it('com renda informada: teto, falta e quanto por mês até dezembro', () => {
+    const t = tetoPgbl([], prev, 200000, 2026, '2026-11-27');
+    expect([t.teto, t.contribuido, t.falta, t.mesesRestantes, t.porMes]).toEqual([24000, 2000, 22000, 2, 11000]);
+  });
+  it('sem renda informada: estima o ano pelos meses lançados', () => {
+    const t = tetoPgbl([m(1, 16000), m(2, 16000, { ferias_terco: 5000 })], prev, null, 2026, '2026-03-10');
+    // lançado: 2×20.000 + 5.000 de férias; 10 meses × 20.000 de média
+    expect([t.base, t.baseEstimada, t.teto]).toEqual([245000, true, 29400]);
+  });
+});

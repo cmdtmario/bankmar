@@ -44,3 +44,29 @@ describe.runIf(fs.existsSync(ARQ))('Controle_Milhas.xlsx real (RF-92)', () => {
     expect(r.emissoes.every((e) => e.milhas == null)).toBe(true);
   });
 });
+
+import { painelConta, potencial } from './milhas';
+describe('Painel por programa', () => {
+  const movs = [
+    { data: '2025-12-10', tipo: 'entrada' as const, origem: 'cartao', pontos: 1000, valor: null },
+    { data: '2026-01-05', tipo: 'entrada' as const, origem: 'clube', pontos: 2000, valor: null },
+    { data: '2026-01-05', tipo: 'custo' as const, origem: 'clube', pontos: null, valor: 50 },
+    { data: '2026-02-01', tipo: 'saida' as const, origem: 'transferencia', pontos: 500, valor: null },
+    { data: '2026-02-03', tipo: 'entrada' as const, origem: 'bonus_transferencia', pontos: 300, valor: null },
+  ];
+  const vendas = [{ data: '2026-02-20', quantidade: 1000, valor_total: 20, status: 'pago' }, { data: '2026-02-21', quantidade: 9999, valor_total: 1, status: 'cancelado' }];
+  const emis = [{ data: '2026-03-01', milhas: 200, status: 'emitida' }];
+  it('grade mês a mês com saldo acumulado desde o início', () => {
+    const p = painelConta(movs, vendas, emis, 2026, '2026-03');
+    expect(p.meses.map((m) => m.saldo)).toEqual([3000, 1800, 1600]);
+    expect(p.meses[0]).toMatchObject({ totalEntradas: 2000, custos: 50 });
+    expect(p.meses[1]).toMatchObject({ transferidas: 500, vendidas: 1000, totalEntradas: 300 });
+    expect(p.meses[1].entradas.transf).toBe(300);
+    expect(p.meses[2].usos).toBe(200);
+    expect(p.anos).toEqual([2026, 2025]);
+  });
+  it('valor de mercado e lucro potencial', () => {
+    expect(potencial(10000, 18, 12)).toEqual({ valor: 180, lucro: 60 });
+    expect(potencial(10000, null, 12)).toBeNull();
+  });
+});

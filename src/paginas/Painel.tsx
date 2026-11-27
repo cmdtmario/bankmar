@@ -3,13 +3,16 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Bar, BarChart, Cell, ComposedChart, Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, HandCoins, ListChecks, Wallet } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, HandCoins, ListChecks } from 'lucide-react';
 import { carregarPainel, type PainelDados, type Vencimento } from '../lib/painel';
 import { pctBR, brl, dataBR, competenciaDe, hojeBrasilia, nomeMes, somaMeses } from '../lib/formato';
 import { Contador, Esqueleto, Mostrador, Sequencia } from '../ui/animacao';
 import { Erro, useAcao } from '../ui/comum';
 import { Logo, marcaDe } from '../ui/Logo';
 import { FormPagamento } from './Mes';
+import { PainelPgbl } from '../ui/PainelPgbl';
+import { carregarIr } from '../lib/dadosIr';
+import { tetoPgbl } from '../lib/ir';
 import { TEMA } from '../ui/tema';
 
 const PALETA = TEMA.serie;
@@ -38,6 +41,11 @@ export function Painel() {
   const [comp, setComp] = useState(competenciaDe(hoje));
   const [d, setD] = useState<PainelDados | null>(null);
   const [pagando, setPagando] = useState<Vencimento | null>(null);
+  const [teto, setTeto] = useState<ReturnType<typeof tetoPgbl> | null>(null);
+  useEffect(() => {
+    const ano = Number(hoje.slice(0, 4));
+    carregarIr(ano).then((x) => setTeto(tetoPgbl(x.mensal, x.previdencia, x.config.renda_tributavel, ano, hoje))).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { erro, rodar } = useAcao();
   const nav = useNavigate();
   const reduzir = useReducedMotion();
@@ -90,7 +98,7 @@ export function Painel() {
               const r = rotuloPrazo(v);
               return (
                 <div className={`venc-linha ${r.classe}`} key={v.tipo + v.id}>
-                  <div className="venc-icone" aria-hidden="true">{marcaDe(v.tipo === 'fatura' ? v.nome : v.banco) ? <Logo nome={v.tipo === 'fatura' ? v.nome : v.banco} tamanho={34} /> : v.tipo === 'fatura' ? <CreditCard size={18} /> : <Wallet size={18} />}</div>
+                  <div className="venc-icone" aria-hidden="true"><Logo nome={marcaDe(v.nome) ? v.nome : marcaDe(v.banco) ? v.banco : v.nome.replace(/^Fatura /, '')} tamanho={34} sempre /></div>
                   <div className="grow">
                     <strong>{v.nome}</strong>
                     <div className="sub">{dataBR(v.vencimento).slice(0, 5)} · <span className={`prazo ${r.classe}`}>{r.texto}</span>{v.pago > 0 ? ` · faltam ${brl(v.falta)}` : ''}</div>
@@ -102,6 +110,8 @@ export function Painel() {
           </Sequencia>
         )}
       </section>
+
+      {teto && <PainelPgbl t={teto} ano={Number(hoje.slice(0, 4))} compacto />}
 
       <div className="grade-2">
         {/* Categorias */}

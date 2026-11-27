@@ -385,7 +385,7 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
         </div>
         {grupos.map((g) => (
           <section key={g.g} className="grupo">
-            <h3 className="grupo-titulo"><span className="com-logo">{agrupar === 'instituicao' && <Logo nome={g.g} tamanho={16} />}{nomeGrupo(g.g)}</span><span className="num">{brl(g.valor)}</span></h3>
+            <h3 className="grupo-titulo"><span className="com-logo">{agrupar === 'instituicao' && <Logo nome={g.g} tamanho={16} sempre />}{nomeGrupo(g.g)}</span><span className="num">{brl(g.valor)}</span></h3>
             <ul className="razao">
               {g.itens.map((l) => {
                 const { a } = l; const p = precoDe(a); const d = detalhe(l);
@@ -418,7 +418,7 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
             </thead>
             {grupos.map((g) => (
               <tbody key={g.g}>
-                <tr className="linha-grupo"><th colSpan={7} scope="rowgroup"><span className="com-logo">{agrupar === 'instituicao' && <Logo nome={g.g} tamanho={16} />}{nomeGrupo(g.g)}</span> <span className="sub">{g.itens.length}</span></th><td className="num">{brl(g.valor)}</td><td className="num">{pctBR(total ? g.valor / total : 0)}</td></tr>
+                <tr className="linha-grupo"><th colSpan={7} scope="rowgroup"><span className="com-logo">{agrupar === 'instituicao' && <Logo nome={g.g} tamanho={16} sempre />}{nomeGrupo(g.g)}</span> <span className="sub">{g.itens.length}</span></th><td className="num">{brl(g.valor)}</td><td className="num">{pctBR(total ? g.valor / total : 0)}</td></tr>
                 {g.itens.map((l) => {
                   const { a, i } = l; const p = precoDe(a); const d = detalhe(l);
                   return (

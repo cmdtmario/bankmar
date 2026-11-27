@@ -6,10 +6,12 @@ import {
   carregarIr, carregarBaseInvestimentos, salvarMensal, salvarPrevidencia, removerPrevidencia, salvarConfig, marcarConferencia, importarIrrf,
   parametrosDe, codigosDe, exportarPdfIr, exportarPlanilhaIr, type DadosIr, type Conferencia,
 } from '../lib/dadosIr';
-import { CODIGOS_PADRAO, FICHAS, PARAMETROS_PADRAO, categoriaDe, lerAbaIrrf, montarRelatorio, rendaVariavel, resumoAnual, type ChaveCodigo, type ItemIR, type Mensal } from '../lib/ir';
+import { CODIGOS_PADRAO, FICHAS, PARAMETROS_PADRAO, categoriaDe, lerAbaIrrf, montarRelatorio, rendaVariavel, resumoAnual, tetoPgbl, type ChaveCodigo, type ItemIR, type Mensal } from '../lib/ir';
 import { calcularCustos } from '../lib/investimentos/carteira';
 import { brl, nomeMes, pctBR } from '../lib/formato';
 import { Carregando, Erro, Modal, numeroDe, useAcao } from '../ui/comum';
+import { PainelPgbl } from '../ui/PainelPgbl';
+import { hojeBrasilia } from '../lib/formato';
 
 type Aba = 'mensal' | 'resumo' | 'rv' | 'relatorio' | 'config';
 const ABAS: [Aba, string][] = [['relatorio', 'Relatório'], ['resumo', 'Resumo'], ['mensal', 'Mês a mês'], ['rv', 'Renda variável'], ['config', 'Configurar']];
@@ -33,7 +35,7 @@ export function ImpostoRenda() {
     const produtos = new Map(base.movs.map((m) => [m.codigo, m.produto]));
     const vendas = [...calcularCustos(base.negs, base.movs).values()].flatMap((c) => c.vendas);
     const rv = rendaVariavel(vendas, (c) => categoriaDe(c, classes, produtos.get(c) ?? ''), ano, p);
-    return { rel, rv, p, resumo: resumoAnual(d.mensal, d.previdencia, d.config.renda_tributavel, p) };
+    return { rel, rv, p, resumo: resumoAnual(d.mensal, d.previdencia, d.config.renda_tributavel, p), teto: tetoPgbl(d.mensal, d.previdencia, d.config.renda_tributavel, ano, hojeBrasilia(), p) };
   }, [d, base, ano]);
 
   return (
@@ -49,6 +51,7 @@ export function ImpostoRenda() {
       </div>
       <Erro msg={erro} />
       {msg && <div className="okmsg">{msg}</div>}
+      {calc && <PainelPgbl t={calc.teto} ano={ano} />}
       {!d || !calc ? <Carregando /> : aba === 'relatorio' ? <Relatorio ano={ano} itens={calc.rel.itens} avisos={calc.rel.avisos} rv={calc.rv} conf={d.conferencia} revisado={d.config.revisado_em} onMudou={carregar} />
         : aba === 'resumo' ? <Resumo d={d} r={calc.resumo} ano={ano} onMudou={carregar} />
         : aba === 'mensal' ? <MesAMes d={d} ano={ano} onMudou={carregar} />

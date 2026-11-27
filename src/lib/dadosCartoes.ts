@@ -71,15 +71,15 @@ export async function checarBeneficiosAgora() {
 // ---------------------------------------------------------------------------
 // Milhas
 // ---------------------------------------------------------------------------
-export interface ContaMilhas { conta_id: string; programa_id: string; programa: string; titular: string; de_terceiro: boolean; ativa: boolean; entradas: number; saidas: number; vendidas: number; saldo: number; custos: number; custo_milheiro: number | null; receita_vendas: number }
-export interface Programa { id: string; nome: string; tipo: string; limite_cpfs: number | null; periodo_cpfs: 'ano_civil' | '12_meses' }
+export interface ContaMilhas { conta_id: string; programa_id: string; programa: string; titular: string; de_terceiro: boolean; ativa: boolean; entradas: number; saidas: number; vendidas: number; saldo: number; custos: number; custo_milheiro: number | null; receita_vendas: number; programa_ativo: boolean }
+export interface Programa { id: string; nome: string; tipo: string; limite_cpfs: number | null; periodo_cpfs: 'ano_civil' | '12_meses'; ativo: boolean; cotacao_milheiro: number | null }
 export interface MovimentoDb { id: string; conta_id: string; data: string; tipo: 'entrada' | 'saida' | 'custo'; origem: string; pontos: number | null; valor: number | null; descricao: string | null; invoice_id: string | null; previsto: number | null; transferencia_id: string | null }
 export interface VendaDb { id: string; conta_id: string; plataforma: string | null; data: string; quantidade: number; valor_total: number; prazo_dias: number | null; data_pagamento: string | null; cpfs: number; status: string }
 export interface EmissaoDb { id: string; conta_id: string; data: string; localizador: string | null; data_voo: string | null; trecho: string | null; card_id: string | null; cartao_texto: string | null; milhas: number | null; valor: number | null; cashback: number; status: string; reembolsado: number; cpfs: number }
 
 export async function carregarContasMilhas(): Promise<ContaMilhas[]> {
   const r = ok(await supabase.from('mil_saldos').select('*')) as ContaMilhas[];
-  return r.map((c) => ({ ...c, entradas: Number(c.entradas), saidas: Number(c.saidas), vendidas: Number(c.vendidas), saldo: Number(c.saldo), custos: Number(c.custos), custo_milheiro: c.custo_milheiro != null ? Number(c.custo_milheiro) : null, receita_vendas: Number(c.receita_vendas) }));
+  return r.map((c) => ({ ...c, entradas: Number(c.entradas), saidas: Number(c.saidas), vendidas: Number(c.vendidas), saldo: Number(c.saldo), custos: Number(c.custos), custo_milheiro: c.custo_milheiro != null ? Number(c.custo_milheiro) : null, receita_vendas: Number(c.receita_vendas), programa_ativo: c.programa_ativo !== false }));
 }
 
 async function todas<T>(tabela: string): Promise<T[]> {
@@ -103,7 +103,7 @@ export async function carregarMilhas() {
     supabase.from('invoice_summary').select('invoice_id, card_id, competencia, total, confirmada').eq('confirmada', true).order('competencia', { ascending: false }).limit(300),
   ]);
   return {
-    contas, programas: ok(programas) as Programa[],
+    contas, programas: (ok(programas) as Programa[]).map((p) => ({ ...p, ativo: p.ativo !== false, cotacao_milheiro: p.cotacao_milheiro != null ? Number(p.cotacao_milheiro) : null })),
     movimentos: num(movimentos, ['pontos', 'valor', 'previsto']), vendas: num(vendas, ['quantidade', 'valor_total']), emissoes: num(emissoes, ['milhas', 'valor', 'cashback', 'reembolsado']),
     cartoes: num(ok(cartoes) as { id: string; apelido: string; mil_conta_id: string; pontos_nacional: number | null; cashback_pct: number; ativo: boolean }[], ['pontos_nacional', 'cashback_pct']),
     faturas: num(ok(faturas) as { invoice_id: string; card_id: string; competencia: string; total: number; confirmada: boolean }[], ['total']),
@@ -127,6 +127,8 @@ export const salvarVenda = async (v: Partial<VendaDb>) => (v.id ? ok(await supab
 export const removerVenda = async (id: string) => ok(await supabase.from('mil_vendas').delete().eq('id', id));
 export const salvarEmissao = async (e: Partial<EmissaoDb>) => (e.id ? ok(await supabase.from('mil_emissoes').update(e).eq('id', e.id)) : ok(await supabase.from('mil_emissoes').insert(e)));
 export const removerEmissao = async (id: string) => ok(await supabase.from('mil_emissoes').delete().eq('id', id));
+export const ativarPrograma = async (id: string, ativo: boolean) => ok(await supabase.from('mil_programas').update({ ativo }).eq('id', id));
+export const salvarCotacao = async (id: string, cotacao_milheiro: number | null) => ok(await supabase.from('mil_programas').update({ cotacao_milheiro }).eq('id', id));
 export const salvarPrograma = async (p: Partial<Programa> & { id: string }) => ok(await supabase.from('mil_programas').update({ limite_cpfs: p.limite_cpfs, periodo_cpfs: p.periodo_cpfs, tipo: p.tipo }).eq('id', p.id));
 
 // ---------------------------------------------------------------------------

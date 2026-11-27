@@ -227,3 +227,19 @@ Abreviação usada nos caminhos: `M` = `supabase/migrations/20261125000000_entre
 - RF-13: quando há folha lançada no IR para o mês em que o dinheiro entrou, a renda do Mês vem de lá e não é digitada; sem folha, continua manual.
 - RF-75: contribuições de previdência que são contas no Mês entram no IR sozinhas; à mão só o que não é conta. Contas que começam com "Previdência" já foram ligadas pelo nome do plano.
 - RF-21: o leitor genérico atende os bancos sem leitor próprio; a conferência do total (RF-26) continua obrigatória.
+
+---
+
+## Ajustes de 27/11 (2ª rodada)
+
+| Pedido | Status | Onde | Como verificar |
+|---|---|---|---|
+| Mês todo pago → já mostra o mês seguinte | Atendido | `src/paginas/Mes.tsx` (avanço automático + aviso) | Pagar tudo do mês e abrir Mês |
+| Fatura zerada aparece no mês, com selo e "Conferi: veio zerada" | Atendido | migration `20261127030000`, `invoices.zerada_conferida_em`; `Mes.tsx` | e2e `celular-72-mes-fatura-zerada.png` |
+| Cartão sem fatura importada aparece como "Aguardando a fatura" | Atendido | `Mes.tsx` | e2e (Nubank no Mês) |
+| PGBL: quanto falta para o teto, por mês até dezembro | Atendido | `src/lib/ir.ts` `tetoPgbl`, `src/ui/PainelPgbl.tsx` (Início e topo do IR) | vitest `Teto do PGBL`; print `celular-01-.png` |
+| Logos: sigla quando não há logo, mais bancos/contas | Atendido | `src/ui/Logo.tsx` (iniciais + cor estável; CEF, BRB, PagBank, utilidades, streaming, planos) | Visual |
+| Milhas: habilitar/desabilitar programas | Atendido | `mil_programas.ativo`; modal "Programas que uso" | e2e (Latam oculto) |
+| Milhas: painel gerencial por programa | Atendido | `Milhas.tsx` `PorPrograma`, `src/lib/milhas.ts` `painelConta`/`potencial` | e2e `celular-55-milhas-programa.png`; vitest `Painel por programa` |
+
+Decisões: teto do PGBL sem renda informada é estimado pela folha lançada (média dos meses lançados para os que faltam) e aparece como estimativa. Programa desabilitado some de telas e totais, mas os lançamentos continuam guardados. A cotação do milheiro é informada à mão, por programa.

@@ -5,14 +5,14 @@ import { folhasRecebidasEm } from '../lib/dadosIr';
 import type { Mensal } from '../lib/ir';
 import { supabase, ok } from '../lib/supabase';
 // RF-12, RF-13, RF-14, RF-16: tela "Mês" (equivalente à aba mensal da planilha).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { dadosDoMes, salvarRenda, adicionarPagamento, removerPagamento, type Conta, type FaturaResumo, type PagamentoDb } from '../lib/dados';
 import { statusConta } from '../lib/regras';
 import { pctBR, brl, dataBR, hojeBrasilia, competenciaDe, somaMeses, nomeMes, somaCentavos } from '../lib/formato';
 import { Carregando, Erro, Modal, Situacao, numeroDe, useAcao, useCadastros } from '../ui/comum';
-import { Logo } from '../ui/Logo';
+import { Logo, marcaDe } from '../ui/Logo';
 
-export type Item = { tipo: 'conta' | 'fatura'; id: string; nome: string; vencimento: string | null; valor: number; mario: number; pagamentos: PagamentoDb[]; banco: string | null; obs?: string | null; extra?: string; irPlano?: string | null };
+export type Item = { tipo: 'conta' | 'fatura'; id: string; nome: string; vencimento: string | null; valor: number; mario: number; pagamentos: PagamentoDb[]; banco: string | null; obs?: string | null; extra?: string; irPlano?: string | null; cardId?: string; zerada?: 'conferida' | 'confirmar'; aguardando?: number };
 
 export function Mes() {
   const { c } = useCadastros();
@@ -35,19 +35,45 @@ export function Mes() {
   });
   useEffect(() => { setDados(null); carregar(); }, [comp]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const cartao = (id: string) => c.cartoes.find((x) => x.id === id);
   const itens: Item[] = dados
     ? [
         ...dados.contas.map((k: Conta): Item => ({ tipo: 'conta', id: k.id, nome: k.descricao, vencimento: k.vencimento, valor: k.valor, mario: k.total_mario ?? 0, pagamentos: k.pagamentos, banco: k.banco_pagamento, obs: k.observacao, irPlano: (k as Conta & { ir_plano?: string | null }).ir_plano })),
-        ...dados.faturas
-          .filter((f: FaturaResumo) => f.confirmada || f.qtd_linhas > 0 || f.pagamentos.length > 0)
-          .map((f): Item => ({ tipo: 'fatura', id: f.invoice_id, nome: cartao(f.card_id)?.apelido ?? 'Cartão', vencimento: f.vencimento, valor: f.total, mario: f.total_mario, pagamentos: f.pagamentos, banco: cartao(f.card_id)?.banco_pagamento ?? null, extra: f.qtd_nao_conferidas ? `${f.qtd_nao_conferidas} lançamento(s) não conferido(s)` : undefined })),
+        // Toda fatura de cartão ativo aparece, mesmo zerada ou ainda não importada.
+        ...c.cartoes.filter((k) => k.ativo || dados.faturas.some((f) => f.card_id === k.id)).map((k): Item => {
+          const f = dados.faturas.find((x: FaturaResumo) => x.card_id === k.id) as (FaturaResumo & { zerada_conferida_em?: string | null }) | undefined;
+          const venc = f?.vencimento ?? (k.dia_vencimento ? `${comp.slice(0, 8)}${String(Math.min(k.dia_vencimento, 28)).padStart(2, '0')}` : null);
+          const temReal = f && (f.confirmada || f.qtd_linhas > 0);
+          const zero = !f || (Number(f.total) === 0 && !f.pagamentos.length);
+          return {
+            tipo: 'fatura', id: f?.invoice_id ?? `cartao:${k.id}`, cardId: k.id, nome: k.apelido, vencimento: venc, valor: f ? Number(f.total) : 0, mario: f ? Number(f.total_mario) : 0,
+            pagamentos: f?.pagamentos ?? [], banco: k.banco_pagamento ?? null,
+            extra: f?.qtd_nao_conferidas ? `${f.qtd_nao_conferidas} lançamento(s) não conferido(s)` : undefined,
+            zerada: zero && (!temReal || Number(f?.total) === 0) && !(f && f.qtd_projetadas > 0 && !temReal) ? (f?.zerada_conferida_em ? 'conferida' : 'confirmar') : undefined,
+            aguardando: f && !temReal && f.qtd_projetadas > 0 ? f.qtd_projetadas : undefined,
+          };
+        }),
       ].sort((a, b) => (a.vencimento ?? '9').localeCompare(b.vencimento ?? '9'))
     : [];
   const rendaNum = dados?.mes?.renda ?? null;
   const total = somaCentavos(itens.map((i) => i.valor));
   const totalMario = somaCentavos(itens.map((i) => i.mario));
-  const pendentes = itens.filter((i) => ['FALTA', 'VERIFICAR', 'CONFERIR HOJE'].includes(statusConta(i.valor, i.pagamentos, hoje).tipo));
+  const pendentes = itens.filter((i) => i.zerada ? i.zerada === 'confirmar' : i.aguardando ? true : ['FALTA', 'VERIFICAR', 'CONFERIR HOJE'].includes(statusConta(i.valor, i.pagamentos, hoje).tipo));
+
+  // Mês todo pago (e faturas zeradas conferidas): abre direto o mês seguinte, uma vez.
+  const avancou = useRef(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  useEffect(() => {
+    if (!dados || avancou.current) return;
+    avancou.current = true;
+    if (comp === competenciaDe(hoje) && itens.length && !pendentes.length) {
+      setAviso(`${nomeMes(comp)} está todo pago. Mostrando o mês seguinte.`);
+      setComp(somaMeses(comp, 1));
+    }
+  }, [dados]); // eslint-disable-line react-hooks/exhaustive-deps
+  const conferirZerada = (i: Item, sim: boolean) => rodar(async () => {
+    ok(await supabase.from('invoices').upsert({ card_id: i.cardId, competencia: comp, vencimento: i.vencimento, zerada_conferida_em: sim ? new Date().toISOString() : null }, { onConflict: 'user_id,card_id,competencia' }));
+    await carregar();
+  });
 
   const aberto = itens.find((i) => i.tipo + i.id === detalhe) ?? null;
   return (
@@ -59,6 +85,7 @@ export function Mes() {
       </div>
       <div className="barra-ferramentas"><button onClick={() => setEditando({ competencia: comp, descricao: '', valor: 0, split_rule: { tipo: 'mario' }, origem: 'manual' } as Partial<Conta>)}><Plus size={16} aria-hidden="true" /> Conta avulsa ou boleto</button></div>
       <Erro msg={erro} />
+      {aviso && <div className="okmsg">{aviso}</div>}
       {!dados ? <Carregando /> : (
         <>
           <dl className="numeros-linha">
@@ -91,10 +118,12 @@ export function Mes() {
               return (
                 <li key={i.tipo + i.id}>
                   <button className="razao-linha" onClick={() => setDetalhe(i.tipo + i.id)}>
-                    <span className="razao-cod com-logo"><Logo nome={i.tipo === 'fatura' ? i.nome : i.banco} />{i.nome}{i.tipo === 'fatura' && <span className="selo-inst">fatura</span>}{i.irPlano && <span className="selo-inst" title="Entra no Imposto de Renda como contribuição de previdência">IR</span>}</span>
+                    <span className="razao-cod com-logo"><Logo nome={marcaDe(i.nome) ? i.nome : marcaDe(i.banco) ? i.banco : i.nome} sempre />{i.nome}{i.tipo === 'fatura' && <span className="selo-inst">fatura</span>}{i.irPlano && <span className="selo-inst" title="Entra no Imposto de Renda como contribuição de previdência">IR</span>}</span>
                     <span className="razao-valor num">{brl(i.valor)}</span>
                     <span className="razao-det">vence {dataBR(i.vencimento).slice(0, 5)}{i.mario !== i.valor ? ` · sua parte ${brl(i.mario)}` : ''}{i.extra && <> · <span className="alerta-txt">{i.extra}</span></>}</span>
-                    <span className="razao-var num"><Situacao tipo={st.tipo} diferenca={'diferenca' in st ? st.diferenca : undefined} vencimento={i.vencimento} hoje={hoje} /></span>
+                    <span className="razao-var num">{i.zerada ? <span className={`situacao ${i.zerada === 'conferida' ? 'ok' : 'alerta'}`}>{i.zerada === 'conferida' ? 'Zerada · conferida' : 'Zerada? confirme'}</span>
+                      : i.aguardando ? <span className="situacao neutro">Aguardando a fatura</span>
+                      : <Situacao tipo={st.tipo} diferenca={'diferenca' in st ? st.diferenca : undefined} vencimento={i.vencimento} hoje={hoje} />}</span>
                   </button>
                 </li>
               );
@@ -148,7 +177,13 @@ export function Mes() {
               </li>
             ))}
           </ul>
-          {aberto.pagamentos.length < 2 && <button className="pri" onClick={() => setPagando(aberto)}>Registrar pagamento</button>}
+          {aberto.zerada ? (
+            <div className="zerada-box">
+              <p>{aberto.zerada === 'conferida' ? 'Você conferiu que esta fatura veio zerada. Não precisa pagar.' : 'Esta fatura está sem lançamentos e zerada: não precisa pagar. Confira no app do banco e marque abaixo.'}</p>
+              <label className="check"><input type="checkbox" checked={aberto.zerada === 'conferida'} onChange={(e) => conferirZerada(aberto, e.target.checked)} /> Conferi: a fatura veio zerada</label>
+            </div>
+          ) : aberto.aguardando ? <p className="sub">A fatura ainda não foi importada. Há {aberto.aguardando} parcela(s) prevista(s) para este mês. <Link to="/faturas" className="link-acao" style={{ padding: 0 }}>Importar em Faturas</Link></p>
+          : aberto.pagamentos.length < 2 && <button className="pri" onClick={() => setPagando(aberto)}>Registrar pagamento</button>}
         </Modal>
       )}
       {editando && <FormConta k={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); setDetalhe(null); carregar(); }} />}

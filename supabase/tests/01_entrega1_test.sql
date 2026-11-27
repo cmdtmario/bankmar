@@ -258,4 +258,13 @@ select pg_temp.ok((select count(*) from ir_previdencia where competencia = '2026
 delete from bills where id = '70000000-0000-0000-0000-000000000001';
 select pg_temp.ok((select count(*) from ir_previdencia where plano = 'ITAU') = 0, 'excluir a conta tira a contribuição do IR');
 reset role;
+
+-- Fatura zerada conferida e programas
+set role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","aal":"aal2"}', false);
+insert into invoices (card_id, competencia, zerada_conferida_em) values ('30000000-0000-0000-0000-000000000001', '2029-01-01', now());
+select pg_temp.ok((select zerada_conferida_em is not null and total = 0 from invoice_summary where competencia = '2029-01-01'), 'fatura zerada conferida aparece no resumo');
+update mil_programas set ativo = false where nome = 'Latam Pass';
+select pg_temp.ok((select bool_and(not programa_ativo) from mil_saldos where programa = 'Latam Pass'), 'programa desabilitado aparece marcado');
+reset role;
 select 'TODOS OS TESTES SQL PASSARAM' as resultado;

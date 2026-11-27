@@ -60,19 +60,21 @@ DADOS = {
                "mil_conta_id": "mc2", "cashback_pct": 1, "link": "https://example.com/beneficios", "beneficio_status": "alterado", "beneficio_verificado_em": HOJE.isoformat() + "T12:00:00Z"},
               {"id": "k2", "apelido": "Caixa Visa", "emissor": "caixa", "final4": "5678", "dia_vencimento": 8, "banco_pagamento": "Caixa", "ativo": True},
               {"id": "k3", "apelido": "Nubank", "emissor": "outro", "final4": None, "dia_vencimento": 15, "banco_pagamento": "Nubank", "ativo": True, "vip_acessos": 999},
-              {"id": "k4", "apelido": "Cartão Antigo", "emissor": "outro", "final4": "9999", "dia_vencimento": 10, "banco_pagamento": None, "ativo": False, "desativado_em": "2025-10-20"}],
+              {"id": "k4", "apelido": "Cartão Antigo", "emissor": "outro", "final4": "9999", "dia_vencimento": 10, "banco_pagamento": None, "ativo": False, "desativado_em": "2025-10-20"},
+              {"id": "k5", "apelido": "Inter Black", "emissor": "outro", "final4": "4321", "dia_vencimento": 20, "banco_pagamento": "Inter", "ativo": True}],
     "card_isencoes": [{"id": "is1", "card_id": "k1", "tipo": "gasto_mensal", "meta": 8000, "meses": None, "ate": None, "observacao": None},
                       {"id": "is2", "card_id": "k2", "tipo": "promocional", "meta": None, "meses": None, "ate": (HOJE + timedelta(days=40)).isoformat(), "observacao": "Isenção promocional"},
                       {"id": "is3", "card_id": "k3", "tipo": "gasto_periodo", "meta": 30000, "meses": 3, "ate": None, "observacao": None}],
     "card_vip_usos": [{"id": "vu1", "card_id": "k1", "data": (HOJE - timedelta(days=20)).isoformat(), "aeroporto": "BSB"}],
     "card_beneficios": [{"id": "cb1", "card_id": "k1", "capturado_em": HOJE.isoformat() + "T12:00:00Z", "situacao": "pendente",
                          "diff": {"removidas": ["Sala VIP: 4 acessos por ano para o titular."], "adicionadas": ["Sala VIP: 2 acessos por ano para o titular."]}}],
-    "mil_programas": [{"id": "pg1", "nome": "Smiles", "tipo": "aereo", "limite_cpfs": 25, "periodo_cpfs": "ano_civil"},
-                      {"id": "pg2", "nome": "TudoAzul", "tipo": "aereo", "limite_cpfs": None, "periodo_cpfs": "ano_civil"},
-                      {"id": "pg3", "nome": "Latam Pass", "tipo": "aereo", "limite_cpfs": 24, "periodo_cpfs": "ano_civil"}],
-    "mil_saldos": [{"conta_id": "mc1", "programa_id": "pg1", "programa": "Smiles", "titular": "Mário", "de_terceiro": False, "ativa": True, "entradas": 240000, "saidas": 60000, "vendidas": 90000, "saldo": 90000, "custos": 2100, "custo_milheiro": 8.75, "receita_vendas": 1410},
-                   {"conta_id": "mc2", "programa_id": "pg2", "programa": "TudoAzul", "titular": "Mário", "de_terceiro": False, "ativa": True, "entradas": 180000, "saidas": 20000, "vendidas": 0, "saldo": 160000, "custos": 2700, "custo_milheiro": 15, "receita_vendas": 0},
-                   {"conta_id": "mc3", "programa_id": "pg1", "programa": "Smiles", "titular": "Diego", "de_terceiro": True, "ativa": True, "entradas": 12000, "saidas": 0, "vendidas": 0, "saldo": 12000, "custos": 500, "custo_milheiro": 41.67, "receita_vendas": 0}],
+    "mil_programas": [{"id": "pg1", "nome": "Smiles", "tipo": "aereo", "limite_cpfs": 25, "periodo_cpfs": "ano_civil", "ativo": True, "cotacao_milheiro": 16.5},
+                      {"id": "pg2", "nome": "TudoAzul", "tipo": "aereo", "limite_cpfs": None, "periodo_cpfs": "ano_civil", "ativo": True, "cotacao_milheiro": None},
+                      {"id": "pg3", "nome": "Latam Pass", "tipo": "aereo", "limite_cpfs": 24, "periodo_cpfs": "ano_civil", "ativo": False, "cotacao_milheiro": None}],
+    "mil_saldos": [{"conta_id": "mc1", "programa_id": "pg1", "programa": "Smiles", "titular": "Mário", "de_terceiro": False, "ativa": True, "entradas": 240000, "saidas": 60000, "vendidas": 90000, "saldo": 90000, "custos": 2100, "custo_milheiro": 8.75, "receita_vendas": 1410, "programa_ativo": True},
+                   {"conta_id": "mc2", "programa_id": "pg2", "programa": "TudoAzul", "titular": "Mário", "de_terceiro": False, "ativa": True, "entradas": 180000, "saidas": 20000, "vendidas": 0, "saldo": 160000, "custos": 2700, "custo_milheiro": 15, "receita_vendas": 0, "programa_ativo": True},
+                   {"conta_id": "mc4", "programa_id": "pg3", "programa": "Latam Pass", "titular": "Mário", "de_terceiro": False, "ativa": True, "entradas": 5000, "saidas": 0, "vendidas": 0, "saldo": 5000, "custos": 0, "custo_milheiro": None, "receita_vendas": 0, "programa_ativo": False},
+                   {"conta_id": "mc3", "programa_id": "pg1", "programa": "Smiles", "titular": "Diego", "de_terceiro": True, "ativa": True, "entradas": 12000, "saidas": 0, "vendidas": 0, "saldo": 12000, "custos": 500, "custo_milheiro": 41.67, "receita_vendas": 0, "programa_ativo": True}],
     "mil_movimentos": [{"id": f"mm{i}", "conta_id": "mc1" if i % 2 else "mc2", "data": (HOJE - timedelta(days=12 * i)).isoformat(), "tipo": "entrada" if i % 3 else "custo",
                         "origem": "clube" if i % 3 else "clube", "pontos": None if i % 3 == 0 else 2000 + i * 100, "valor": 42.0 if i % 3 == 0 else None,
                         "descricao": "Clube Smiles" if i % 2 else "Clube TudoAzul", "invoice_id": None, "previsto": None, "transferencia_id": None} for i in range(14)],
@@ -96,6 +98,7 @@ DADOS = {
         {"invoice_id": "i1", "card_id": "k1", "competencia": COMP.isoformat(), "vencimento": HOJE.isoformat(), "total_impresso": 4057, "confirmada": True, "total": 4057, "total_mario": 3110.5, "qtd_linhas": 42, "qtd_projetadas": 0, "qtd_nao_conferidas": 4},
         {"invoice_id": "i2", "card_id": "k2", "competencia": COMP.isoformat(), "vencimento": (HOJE + timedelta(days=9)).isoformat(), "total_impresso": 2197.44, "confirmada": True, "total": 2197.44, "total_mario": 1890, "qtd_linhas": 8, "qtd_projetadas": 0, "qtd_nao_conferidas": 0},
         {"invoice_id": "i3", "card_id": "k3", "competencia": COMP.isoformat(), "vencimento": None, "total_impresso": None, "confirmada": False, "total": 0, "total_mario": 0, "qtd_linhas": 0, "qtd_projetadas": 3, "qtd_nao_conferidas": 0},
+        {"invoice_id": "i5", "card_id": "k5", "competencia": COMP.isoformat(), "vencimento": (HOJE + timedelta(days=12)).isoformat(), "total_impresso": 0, "confirmada": True, "total": 0, "total_mario": 0, "qtd_linhas": 0, "qtd_projetadas": 0, "qtd_nao_conferidas": 0, "zerada_conferida_em": None},
     ],
     "payments": [{"id": "pg1", "bill_id": "b4", "invoice_id": None, "data": (HOJE - timedelta(days=11)).isoformat(), "valor": 119.9, "banco": "Nubank"}],
     "person_items": [
@@ -298,6 +301,13 @@ def main():
             assert pg.get_by_label("Valor deste mês").is_visible(), "edição rápida do valor"
             pg.screenshot(path=str(SAIDA / f"{nome_tam}-71-mes-editar-valor.png"))
             pg.keyboard.press("Escape")
+            pg.wait_for_timeout(400)
+            assert pg.locator(".razao-linha", has_text="Inter Black").get_by_text("Zerada? confirme").is_visible(), "fatura zerada aparece no mês"
+            pg.locator(".razao-linha", has_text="Inter Black").click()
+            assert pg.get_by_label("Conferi: a fatura veio zerada").is_visible(), "confirmação da fatura zerada"
+            pg.screenshot(path=str(SAIDA / f"{nome_tam}-72-mes-fatura-zerada.png"))
+            pg.keyboard.press("Escape")
+            pg.wait_for_timeout(400)
             # cartões: detalhe com isenção, VIP e benefícios alterados
             pg.goto(BASE + "/cartoes")
             pg.wait_for_load_state("networkidle")
@@ -310,8 +320,22 @@ def main():
             # milhas: abas
             pg.goto(BASE + "/milhas")
             pg.wait_for_load_state("networkidle")
+            # painel por programa (padrão): saldo, grade mês a mês e potencial pela cotação
+            assert pg.locator(".painel-prog").get_by_text("160.000").first.is_visible(), "abre no programa de maior saldo"
+            pg.locator(".chips-programas button", has_text="Smiles").first.click()
+            assert pg.locator(".painel-prog").get_by_text("90.000").first.is_visible(), "saldo do programa"
+            assert pg.get_by_text("Mês a mês").is_visible(), "grade mensal"
+            assert not pg.get_by_text("Nenhum movimento nesta conta").count(), "movimentos da conta escolhida"
+            assert pg.get_by_text("Se vender tudo hoje").is_visible()
+            assert not pg.locator(".chips-programas").get_by_text("Latam Pass").count(), "programa desabilitado não aparece"
+            pg.screenshot(path=str(SAIDA / f"{nome_tam}-55-milhas-programa.png"), full_page=True)
+            pg.get_by_role("button", name="Programas que uso").click()
+            assert pg.get_by_role("dialog").get_by_text("Latam Pass").is_visible(), "lista de programas"
+            pg.keyboard.press("Escape")
+            pg.wait_for_timeout(400)
+            pg.get_by_role("tab", name="Visão geral").click()
             assert pg.get_by_text("Pontos de cartão a confirmar").is_visible()
-            for n, aba in enumerate(["Movimentos", "Vendas", "Emissões"], 1):
+            for n, aba in enumerate(["Vendas", "Emissões"], 1):
                 pg.get_by_role("tab", name=aba).click()
                 pg.wait_for_timeout(300)
                 assert not pg.locator(".erro").count(), f"milhas {aba}: erro na tela"

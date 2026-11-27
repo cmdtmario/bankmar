@@ -195,3 +195,58 @@ export function saldoImportado(r: ResultadoMilhas, conta: string) {
   const custos = m.filter((x) => x.tipo === 'custo').reduce((s, x) => s + (x.valor ?? 0), 0);
   return { entradas: ent, saldo: Math.round((ent - sai - ven) * 100) / 100, custos: r2(custos) };
 }
+
+// ---------------------------------------------------------------------------
+// Painel gerencial de uma conta (como as abas de cada programa da planilha)
+type MovP = { data: string; tipo: 'entrada' | 'saida' | 'custo'; origem: string; pontos: number | null; valor: number | null };
+type VendaP = { data: string; quantidade: number; valor_total: number; status: string };
+type EmissaoP = { data: string; milhas: number | null; status: string };
+export const GRUPOS_ENTRADA: [string, string, string[]][] = [
+  ['cartao', 'Cartão', ['cartao']], ['clube', 'Clube', ['clube']], ['compra', 'Compra', ['compra']],
+  ['transf', 'Transferência', ['transferencia', 'bonus_transferencia']], ['outros', 'Outros', ['voo', 'bonus', 'outros']],
+];
+export interface MesPainel { mes: string; entradas: Record<string, number>; totalEntradas: number; usos: number; transferidas: number; vendidas: number; custos: number; saldo: number }
+
+/** Grade mês a mês de um ano (entradas por origem, saídas, custos e saldo ao fim do mês) e a série de saldo. */
+export function painelConta(movs: MovP[], vendas: VendaP[], emissoes: EmissaoP[], ano: number, ateMes: string) {
+  const efeito: { mes: string; d: number }[] = [];
+  for (const m of movs) if (m.tipo !== 'custo') efeito.push({ mes: m.data.slice(0, 7), d: (m.tipo === 'entrada' ? 1 : -1) * (m.pontos ?? 0) });
+  for (const v of vendas) if (v.status !== 'cancelado') efeito.push({ mes: v.data.slice(0, 7), d: -v.quantidade });
+  for (const e of emissoes) if (e.status !== 'cancelada') efeito.push({ mes: e.data.slice(0, 7), d: -(e.milhas ?? 0) });
+  const saldoAte = (mes: string) => Math.round(efeito.filter((x) => x.mes <= mes).reduce((s, x) => s + x.d, 0) * 100) / 100;
+
+  const meses: MesPainel[] = [];
+  for (let i = 1; i <= 12; i++) {
+    const mes = `${ano}-${String(i).padStart(2, '0')}`;
+    if (mes > ateMes) break;
+    const ms = movs.filter((m) => m.data.startsWith(mes));
+    const entradas: Record<string, number> = {};
+    for (const [k, , origens] of GRUPOS_ENTRADA) entradas[k] = ms.filter((m) => m.tipo === 'entrada' && origens.includes(m.origem)).reduce((s, m) => s + (m.pontos ?? 0), 0);
+    const saidaDe = (f: (m: MovP) => boolean) => ms.filter((m) => m.tipo === 'saida' && f(m)).reduce((s, m) => s + (m.pontos ?? 0), 0);
+    meses.push({
+      mes, entradas, totalEntradas: Object.values(entradas).reduce((a, b) => a + b, 0),
+      usos: saidaDe((m) => m.origem !== 'transferencia') + emissoes.filter((e) => e.status !== 'cancelada' && e.data.startsWith(mes)).reduce((s, e) => s + (e.milhas ?? 0), 0),
+      transferidas: saidaDe((m) => m.origem === 'transferencia'),
+      vendidas: vendas.filter((v) => v.status !== 'cancelado' && v.data.startsWith(mes)).reduce((s, v) => s + v.quantidade, 0),
+      custos: Math.round(ms.filter((m) => m.tipo === 'custo').reduce((s, m) => s + (m.valor ?? 0), 0) * 100) / 100,
+      saldo: saldoAte(mes),
+    });
+  }
+  // série dos últimos 24 meses até ateMes
+  const serie: { mes: string; saldo: number }[] = [];
+  const [a, m] = ateMes.split('-').map(Number);
+  for (let i = 23; i >= 0; i--) {
+    const d = new Date(Date.UTC(a, m - 1 - i, 1));
+    const mes = d.toISOString().slice(0, 7);
+    serie.push({ mes, saldo: saldoAte(mes) });
+  }
+  const anos = [...new Set([...movs.map((x) => x.data), ...vendas.map((x) => x.data), ...emissoes.map((x) => x.data)].map((x) => Number(x.slice(0, 4))))].sort((x, y) => y - x);
+  return { meses, serie: serie.filter((s, i) => s.saldo !== 0 || serie.slice(i).some((x) => x.saldo !== 0)), anos };
+}
+
+/** Valor de mercado do saldo pela cotação do milheiro e lucro potencial sobre o custo médio. */
+export function potencial(saldo: number, cotacao: number | null, custoMil: number | null) {
+  if (cotacao == null || cotacao <= 0) return null;
+  const valor = Math.round(saldo / 1000 * cotacao * 100) / 100;
+  return { valor, lucro: Math.round((valor - saldo / 1000 * (custoMil ?? 0)) * 100) / 100 };
+}
