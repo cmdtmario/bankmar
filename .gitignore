@@ -12,3 +12,4 @@ data/
 tests/e2e/prints/
 dist-demo/
 src/demo/dados.json
+__pycache__/
