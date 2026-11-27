@@ -302,3 +302,41 @@ main.largo { max-width: 1320px; }
 @media (min-width: 1140px) { .razao-mesa { grid-template-columns: minmax(0, 1fr) 280px; } }
 .razao-tabela thead th { position: static; }
 .inspetor-numeros div { gap: 10px; }
+
+/* Situação (pago, falta, vencida) e números em linha */
+.situacao { font-size: .82rem; font-weight: 500; white-space: nowrap; }
+.situacao::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: 2px; background: currentColor; }
+.situacao.ok { color: var(--ganho); } .situacao.atrasada { color: var(--perda); } .situacao.alerta { color: var(--alerta); } .situacao.neutro { color: #b5ad9f; }
+.alerta-txt { color: var(--alerta); }
+.numeros-linha { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha); margin: 6px 0 10px; }
+.numeros-linha div { padding: 10px 12px; min-width: 0; }
+.numeros-linha div + div { border-left: 1px solid var(--linha); }
+.numeros-linha dt { font-size: .78rem; color: var(--sub); }
+.numeros-linha dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 600px) { .numeros-linha { grid-template-columns: repeat(2, minmax(0, 1fr)); } .numeros-linha div:nth-child(3) { border-left: 0; } .numeros-linha div:nth-child(n+3) { border-top: 1px solid var(--linha); } }
+.renda-linha { margin-bottom: 8px; }
+.razao-det .alerta-txt { font-size: inherit; }
+input[type="file"]::file-selector-button { background: var(--card); color: var(--txt); border: 1px solid var(--linha-forte); border-radius: 8px; padding: 8px 12px; margin-right: 10px; font: inherit; cursor: pointer; }
+
+/* Início: a pagar como lista */
+.lista-venc { border-top: 1px solid var(--linha-forte); }
+.venc-linha { display: flex; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--linha); }
+.venc-linha .venc-icone { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #1a1916; color: var(--sub); flex: none; }
+.venc-linha.atraso .venc-icone { color: var(--perda); }
+.venc-linha.hoje .venc-icone { color: var(--alerta); }
+.venc-linha .num strong { white-space: nowrap; }
+.venc-linha button { min-height: 40px; }
+.prazo.atraso { color: var(--perda); } .prazo.hoje { color: var(--alerta); }
+
+/* Faturas: blocos em lista, uma ação principal */
+.fatura-bloco { padding: 14px 2px; border-bottom: 1px solid var(--linha); }
+.fatura-bloco:first-of-type { border-top: 1px solid var(--linha-forte); }
+.acoes-fatura { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 10px; }
+.acoes-fatura > button { border: 0; background: none; color: var(--sub); min-height: 40px; padding: 0 8px; }
+.acoes-fatura > button:hover { color: var(--txt); }
+.acoes-fatura > button.destaque-acao { color: var(--ouro-claro); font-weight: 500; }
+.botao-arquivo.secundario { background: none; color: var(--sub); border: 1px solid var(--linha-forte); }
+.fatura-bloco .grow, .venc-linha .grow { flex: 1 1 0; min-width: 0; }
+.venc-linha .num { display: flex; flex-direction: column; align-items: flex-end; }
+.link-acao { border: 0; background: none; color: var(--ouro-claro); font-weight: 500; min-height: 32px; padding: 0 0 0 12px; }
+.link-acao:hover { text-decoration: underline; text-underline-offset: 3px; }

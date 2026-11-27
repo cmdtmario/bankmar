@@ -88,14 +88,13 @@ export function Painel() {
             {d.vencimentos.map((v) => {
               const r = rotuloPrazo(v);
               return (
-                <div className={`card venc ${r.classe}`} key={v.tipo + v.id}>
+                <div className={`venc-linha ${r.classe}`} key={v.tipo + v.id}>
                   <div className="venc-icone" aria-hidden="true">{v.tipo === 'fatura' ? <CreditCard size={18} /> : <Wallet size={18} />}</div>
                   <div className="grow">
                     <strong>{v.nome}</strong>
-                    <div className="sub">{dataBR(v.vencimento)} · <span className={`prazo ${r.classe}`}>{r.texto}</span>{v.pago > 0 ? ` · faltam ${brl(v.falta)}` : ''}</div>
+                    <div className="sub">{dataBR(v.vencimento).slice(0, 5)} · <span className={`prazo ${r.classe}`}>{r.texto}</span>{v.pago > 0 ? ` · faltam ${brl(v.falta)}` : ''}</div>
                   </div>
-                  <div className="num"><strong>{brl(v.falta)}</strong></div>
-                  <button className="pri pequeno" onClick={() => setPagando(v)}>Pagar</button>
+                  <div className="num"><strong>{brl(v.falta)}</strong><button className="link-acao" onClick={() => setPagando(v)} aria-label={`Pagar ${v.nome}`}>Pagar</button></div>
                 </div>
               );
             })}

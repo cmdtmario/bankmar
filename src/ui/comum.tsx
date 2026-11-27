@@ -152,3 +152,15 @@ function SelTag({ tags, v, on }: { tags: Cadastros['tags']; v: string | null | u
 export function divisaoValida(valor: number, regra: RegraDivisao) {
   try { calcularDivisao(valor, regra); return true; } catch { return false; }
 }
+
+/** Situação de uma conta ou fatura em texto calmo, com um ponto colorido (em vez de selo em caixa alta). */
+export function Situacao({ tipo, diferenca, vencimento, hoje }: { tipo: string; diferenca?: number; vencimento?: string | null; hoje: string }) {
+  const atrasada = tipo === 'FALTA' && vencimento != null && vencimento < hoje;
+  const texto = tipo === 'PAGO' ? 'Pago'
+    : tipo === 'FALTA' ? `${atrasada ? 'Vencida · falta' : 'Falta'} ${brlCurto(diferenca ?? 0)}`
+    : tipo === 'VERIFICAR' ? `Pago a mais ${brlCurto(diferenca ?? 0)}`
+    : tipo === 'CONFERIR HOJE' ? 'Conferir hoje' : 'Agendado';
+  const cls = tipo === 'PAGO' ? 'ok' : atrasada || tipo === 'VERIFICAR' ? 'atrasada' : tipo === 'FALTA' ? 'neutro' : 'alerta';
+  return <span className={`situacao ${cls}`}>{texto}</span>;
+}
+const brlCurto = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

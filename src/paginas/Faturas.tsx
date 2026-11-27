@@ -44,7 +44,6 @@ export function Faturas() {
 
   return (
     <main>
-      <p className="titulo-pagina">Faturas</p>
       <div className="linha entre">
         <button onClick={() => setComp(somaMeses(comp, -1))} aria-label="Mês anterior" className="icone"><ChevronLeft size={20} /></button>
         <h1>{nomeMes(comp)}</h1>
@@ -54,7 +53,7 @@ export function Faturas() {
       {!resumos ? <Carregando /> : !cartoes.length ? <p className="sub">Cadastre seus cartões em “Mais”.</p> : cartoes.map((k) => {
         const r = resumos.find((x) => x.card_id === k.id);
         return (
-          <div className="card" key={k.id}>
+          <div className="fatura-bloco" key={k.id}>
             <div className="linha entre">
               <div className="grow">
                 <strong>{k.apelido}</strong>{k.final4 && <span className="sub"> · final {k.final4}</span>}
@@ -65,16 +64,16 @@ export function Faturas() {
               </div>
               {r && <span className="num"><strong>{brl(Number(r.total))}</strong><div className="sub">meu {brl(Number(r.total_mario))}</div></span>}
             </div>
-            <div className="linha" style={{ marginTop: 8 }}>
+            <div className="acoes-fatura">
               {k.emissor !== 'outro' && (
                 <label style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <span className="botao-arquivo"><FileUp size={16} aria-hidden="true" /> Importar PDF</span>
+                  <span className={`botao-arquivo ${r?.confirmada ? 'secundario' : ''}`}><FileUp size={16} aria-hidden="true" /> Importar PDF</span>
                   <input type="file" accept="application/pdf" style={{ width: 0, height: 0, opacity: 0 }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) importarPdf(k, f); }} />
                 </label>
               )}
               <button onClick={() => setTexto(k)}>Colar texto</button>
               <button onClick={() => setImportando({ cartao: k, origem: 'manual', arquivo: null, avisos: [], lida: { emissor: 'texto', final4: null, vencimento: r?.vencimento ?? vencPadrao(k), totalEsperado: null, origemTotal: 'Total informado por você', linhas: [] } })}>Lançar à mão</button>
-              {r && (r.qtd_linhas > 0 || r.qtd_projetadas > 0) && <button onClick={() => setVendo({ cartao: k, invoice: r.invoice_id })}>Ver lançamentos</button>}
+              {r && (r.qtd_linhas > 0 || r.qtd_projetadas > 0) && <button className="destaque-acao" onClick={() => setVendo({ cartao: k, invoice: r.invoice_id })}>Ver lançamentos</button>}
             </div>
           </div>
         );

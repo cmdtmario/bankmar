@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { dadosDoMes, salvarRenda, adicionarPagamento, removerPagamento, type Conta, type FaturaResumo, type PagamentoDb } from '../lib/dados';
 import { statusConta } from '../lib/regras';
 import { pctBR, brl, dataBR, hojeBrasilia, competenciaDe, somaMeses, nomeMes, somaCentavos } from '../lib/formato';
-import { Carregando, Erro, Modal, numeroDe, useAcao, useCadastros } from '../ui/comum';
+import { Carregando, Erro, Modal, Situacao, numeroDe, useAcao, useCadastros } from '../ui/comum';
 
 export type Item = { tipo: 'conta' | 'fatura'; id: string; nome: string; vencimento: string | null; valor: number; mario: number; pagamentos: PagamentoDb[]; banco: string | null; obs?: string | null; extra?: string };
 
@@ -14,6 +14,7 @@ export function Mes() {
   const [dados, setDados] = useState<Awaited<ReturnType<typeof dadosDoMes>> | null>(null);
   const [renda, setRenda] = useState('');
   const [pagando, setPagando] = useState<Item | null>(null);
+  const [detalhe, setDetalhe] = useState<string | null>(null);
   const { erro, rodar } = useAcao();
   const hoje = hojeBrasilia();
 
@@ -38,6 +39,7 @@ export function Mes() {
   const totalMario = somaCentavos(itens.map((i) => i.mario));
   const pendentes = itens.filter((i) => ['FALTA', 'VERIFICAR', 'CONFERIR HOJE'].includes(statusConta(i.valor, i.pagamentos, hoje).tipo));
 
+  const aberto = itens.find((i) => i.tipo + i.id === detalhe) ?? null;
   return (
     <main>
       <div className="linha entre">
@@ -48,49 +50,62 @@ export function Mes() {
       <Erro msg={erro} />
       {!dados ? <Carregando /> : (
         <>
-          <div className="card">
-            <div className="campos">
-              <label>Renda líquida do mês
-                <input inputMode="decimal" value={renda} placeholder={dados.rendaSugerida != null ? `sugestão: ${brl(dados.rendaSugerida)}` : ''}
-                  onChange={(e) => setRenda(e.target.value)} onBlur={() => rodar(async () => { await salvarRenda(comp, numeroDe(renda)); await carregar(); })} />
-              </label>
-              {rendaNum == null && dados.rendaSugerida != null && (
-                <button onClick={() => rodar(async () => { await salvarRenda(comp, dados.rendaSugerida); await carregar(); })}>Usar {brl(dados.rendaSugerida)}</button>
-              )}
-            </div>
-            <div className="linha entre" style={{ marginTop: 10 }}>
-              <div><div className="sub">Total do mês</div><strong>{brl(total)}</strong></div>
-              <div><div className="sub">Parte do Mário</div><strong>{brl(totalMario)}</strong></div>
-              <div><div className="sub">Impacto</div><strong>{rendaNum ? pctBR(totalMario / rendaNum) : '—'}</strong></div>
-              <div><div className="sub">Pendências</div><strong>{pendentes.length}</strong></div>
-            </div>
+          <dl className="numeros-linha">
+            <div><dt>Total do mês</dt><dd>{brl(total)}</dd></div>
+            <div><dt>Sua parte</dt><dd>{brl(totalMario)}</dd></div>
+            <div><dt>Da renda</dt><dd>{rendaNum ? pctBR(totalMario / rendaNum) : '—'}</dd></div>
+            <div><dt>Pendências</dt><dd className={pendentes.length ? 'alerta-txt' : ''}>{pendentes.length}</dd></div>
+          </dl>
+          <div className="campos renda-linha">
+            <label>Renda líquida do mês
+              <input inputMode="decimal" value={renda} placeholder={dados.rendaSugerida != null ? `sugestão: ${brl(dados.rendaSugerida)}` : ''}
+                onChange={(e) => setRenda(e.target.value)} onBlur={() => rodar(async () => { await salvarRenda(comp, numeroDe(renda)); await carregar(); })} />
+            </label>
+            {rendaNum == null && dados.rendaSugerida != null && (
+              <button onClick={() => rodar(async () => { await salvarRenda(comp, dados.rendaSugerida); await carregar(); })}>Usar {brl(dados.rendaSugerida)}</button>
+            )}
           </div>
           {!itens.length && <p className="sub">Nenhuma conta ou fatura neste mês. Cadastre contas recorrentes em “Contas” ou importe faturas em “Faturas”.</p>}
-          {itens.map((i) => {
-            const st = statusConta(i.valor, i.pagamentos, hoje);
-            return (
-              <div className="card" key={i.tipo + i.id}>
-                <div className="linha entre">
-                  <div className="grow">
-                    <strong>{i.nome}</strong> <span className="sub">{i.tipo === 'fatura' ? '· fatura' : ''}</span>
-                    <div className="sub">vence {dataBR(i.vencimento)} · meu: {brl(i.mario)}{rendaNum ? ` · ${pctBR(i.mario / rendaNum, 2)} da renda` : ''}</div>
-                    {i.obs && <div className="sub">{i.obs}</div>}
-                    {i.extra && <div className="sub" style={{ color: 'var(--alerta)' }}>{i.extra}</div>}
-                  </div>
-                  <div className="num"><strong>{brl(i.valor)}</strong><div><span className={`selo ${st.tipo.split(' ')[0]}`}>{st.texto}</span></div></div>
-                </div>
-                <div className="linha" style={{ marginTop: 6 }}>
-                  {i.pagamentos.map((p) => (
-                    <span key={p.id} className="sub">pago {dataBR(p.data)} {p.banco ?? ''} {brl(p.valor)}{' '}
-                      <button className="perigo" onClick={() => rodar(async () => { await removerPagamento(p.id); await carregar(); })} aria-label="Remover pagamento"><X size={16} /></button>
-                    </span>
-                  ))}
-                  {i.pagamentos.length < 2 && <button onClick={() => setPagando(i)}>Registrar pagamento</button>}
-                </div>
-              </div>
-            );
-          })}
+          <ul className="razao">
+            {itens.map((i) => {
+              const st = statusConta(i.valor, i.pagamentos, hoje);
+              return (
+                <li key={i.tipo + i.id}>
+                  <button className="razao-linha" onClick={() => setDetalhe(i.tipo + i.id)}>
+                    <span className="razao-cod">{i.nome}{i.tipo === 'fatura' && <span className="selo-inst">fatura</span>}</span>
+                    <span className="razao-valor num">{brl(i.valor)}</span>
+                    <span className="razao-det">vence {dataBR(i.vencimento).slice(0, 5)}{i.mario !== i.valor ? ` · sua parte ${brl(i.mario)}` : ''}{i.extra && <> · <span className="alerta-txt">{i.extra}</span></>}</span>
+                    <span className="razao-var num"><Situacao tipo={st.tipo} diferenca={'diferenca' in st ? st.diferenca : undefined} vencimento={i.vencimento} hoje={hoje} /></span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </>
+      )}
+      {aberto && !pagando && (
+        <Modal titulo={aberto.nome} onFechar={() => setDetalhe(null)}>
+          <dl className="inspetor-numeros">
+            <div><dt>Valor</dt><dd>{brl(aberto.valor)}</dd></div>
+            <div><dt>Vencimento</dt><dd>{dataBR(aberto.vencimento)}</dd></div>
+            <div><dt>Sua parte</dt><dd>{brl(aberto.mario)}{rendaNum ? ` (${pctBR(aberto.mario / rendaNum, 2)} da renda)` : ''}</dd></div>
+            {aberto.banco && <div><dt>Banco de pagamento</dt><dd>{aberto.banco}</dd></div>}
+          </dl>
+          {aberto.obs && <p className="sub">{aberto.obs}</p>}
+          {aberto.extra && <p className="alerta-txt">{aberto.extra}. Confira em Faturas.</p>}
+          <h3 className="inspetor-sec">Pagamentos</h3>
+          {!aberto.pagamentos.length && <p className="sub">Nenhum pagamento registrado.</p>}
+          <ul className="onde-lista">
+            {aberto.pagamentos.map((p) => (
+              <li key={p.id}>
+                <span>{dataBR(p.data)} {p.data > hoje && <span className="sub">(agendado)</span>}</span>
+                <span className="sub">{p.banco ?? ''}</span>
+                <span className="num">{brl(p.valor)} <button className="icone perigo" onClick={() => rodar(async () => { await removerPagamento(p.id); await carregar(); })} aria-label={`Remover pagamento de ${dataBR(p.data)}`}><X size={16} /></button></span>
+              </li>
+            ))}
+          </ul>
+          {aberto.pagamentos.length < 2 && <button className="pri" onClick={() => setPagando(aberto)}>Registrar pagamento</button>}
+        </Modal>
       )}
       {pagando && <FormPagamento item={pagando} hoje={hoje} onFechar={() => setPagando(null)} onSalvo={() => { setPagando(null); carregar(); }} />}
     </main>
