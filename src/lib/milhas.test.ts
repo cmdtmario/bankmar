@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'fs';
 import { cpfsUsados, custoMilheiro, lerControleMilhas, lucroVenda, pontosPrevistos, cashbackRenunciado, saldoImportado, transferencia } from './milhas';
 
@@ -24,7 +24,8 @@ describe('Cálculos de milhas', () => {
 
 const ARQ = '/mnt/user-data/uploads/13cffcba-Controle_Milhas.xlsx';
 describe.runIf(fs.existsSync(ARQ))('Controle_Milhas.xlsx real (RF-92)', () => {
-  const r = lerControleMilhas(fs.readFileSync(ARQ), '2026-11-27');
+  let r: ReturnType<typeof lerControleMilhas>;
+  beforeAll(() => { r = lerControleMilhas(fs.readFileSync(ARQ), '2026-11-27'); });
   it('saldos batem com os da planilha', () => {
     for (const k of ['Smiles|Mário', 'TudoAzul|Mário', 'Smiles|Diego', 'Copa|Mário']) {
       const c = r.contas.find((x) => x.chave === k)!;
