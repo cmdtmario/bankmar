@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { supabase, ok } from '../lib/supabase';
 import type { Cartao, FaturaResumo } from '../lib/dados';
 import { lerFatura, LeitorError, type FaturaLida } from '../lib/faturas';
+import { senhasParaTentar, salvarSenha } from '../lib/senhasPdf';
 import { extrairItens } from '../lib/faturas/pdf';
 import { faturaDeTexto } from '../lib/faturas/texto';
 import { brl, dataBR, competenciaDe, hojeBrasilia, somaMeses, nomeMes, isoDeBR } from '../lib/formato';
 import { contemNumeroCartao, type RegraDivisao } from '../lib/regras';
 import { Carregando, EditorDivisao, Erro, Modal, numeroDe, rotuloDivisao, useAcao, useCadastros } from '../ui/comum';
+import { Logo } from '../ui/Logo';
 import { Revisao } from './Revisao';
 
 export interface Importacao { cartao: Cartao; lida: FaturaLida; origem: 'pdf' | 'texto' | 'manual'; arquivo: string | null; avisos: string[] }
@@ -30,7 +32,14 @@ export function Faturas() {
 
   const importarPdf = (k: Cartao, arq: File) => rodar(async () => {
     try {
-      const itens = await extrairItens(arq, async (errada) => window.prompt(errada ? 'Senha incorreta. Tente de novo (a senha não é guardada):' : 'Este PDF tem senha. Digite para abrir agora (não é guardada):'));
+      let digitada: string | null = null;
+      const salvas = await senhasParaTentar(k.apelido);
+      const itens = await extrairItens(arq,
+        async (errada) => window.prompt(errada ? 'Senha incorreta. Tente de novo:' : salvas.length ? 'Este PDF tem senha e nenhuma das senhas guardadas neste aparelho serviu. Digite a senha:' : 'Este PDF tem senha. Digite para abrir:'),
+        salvas, (s) => { digitada = s; });
+      if (digitada && window.confirm(`Guardar esta senha neste aparelho para abrir as próximas faturas do ${k.apelido} sozinho?\n(Fica só neste navegador, cifrada; dá para apagar em Ajustes e importações.)`)) {
+        await salvarSenha(k.apelido, digitada).catch(() => {});
+      }
       const lida = lerFatura(k.emissor, itens);
       const avisos: string[] = [];
       if (k.final4 && lida.final4 && k.final4 !== lida.final4) avisos.push(`O PDF é do cartão final ${lida.final4}, mas o cadastro de “${k.apelido}” tem final ${k.final4}. Confira se escolheu o cartão certo.`);
@@ -56,16 +65,16 @@ export function Faturas() {
           <div className="fatura-bloco" key={k.id}>
             <div className="linha entre">
               <div className="grow">
-                <strong>{k.apelido}</strong>{k.final4 && <span className="sub"> · final {k.final4}</span>}
+                <strong className="com-logo"><Logo nome={k.apelido} />{k.apelido}</strong>{k.final4 && <span className="sub"> · final {k.final4}</span>}
                 <div className="sub">
                   {r?.confirmada ? `importada · ${r.qtd_linhas} lançamentos · vence ${dataBR(r.vencimento)}` : r?.qtd_projetadas ? `${r.qtd_projetadas} parcela(s) prevista(s)` : 'sem fatura'}
-                  {k.emissor === 'outro' && ' · sem leitor de PDF (use colar texto)'}
+                  {k.emissor === 'outro' && ' · leitor automático genérico'}
                 </div>
               </div>
               {r && <span className="num"><strong>{brl(Number(r.total))}</strong><div className="sub">meu {brl(Number(r.total_mario))}</div></span>}
             </div>
             <div className="acoes-fatura">
-              {k.emissor !== 'outro' && (
+              {(
                 <label style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <span className={`botao-arquivo ${r?.confirmada ? 'secundario' : ''}`}><FileUp size={16} aria-hidden="true" /> Importar PDF</span>
                   <input type="file" accept="application/pdf" style={{ width: 0, height: 0, opacity: 0 }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) importarPdf(k, f); }} />

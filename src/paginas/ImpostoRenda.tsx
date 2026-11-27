@@ -1,5 +1,6 @@
 // Entrega 4 — Imposto de Renda (RF-75 a RF-78d, RF-93).
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Copy, FileDown, FileSpreadsheet, FileUp } from 'lucide-react';
 import {
   carregarIr, carregarBaseInvestimentos, salvarMensal, salvarPrevidencia, removerPrevidencia, salvarConfig, marcarConferencia, importarIrrf,
@@ -147,7 +148,7 @@ function Resumo({ d, r, ano, onMudou }: { d: DadosIr; r: ReturnType<typeof resum
   return (
     <>
       <dl className="numeros-linha">
-        <div><dt>Salário líquido + férias</dt><dd>{brl(r.liquido + r.ferias)}</dd></div>
+        <div><dt>Líquido + férias + 13º</dt><dd>{brl(r.liquido + r.ferias)}</dd></div>
         <div><dt>IR retido</dt><dd>{brl(r.ir)}</dd></div>
         <div><dt>INSS</dt><dd>{brl(r.inss)}</dd></div>
         <div><dt>Saúde</dt><dd>{brl(r.saude + r.odonto + r.medicoFora)}</dd></div>
@@ -173,7 +174,7 @@ function Resumo({ d, r, ano, onMudou }: { d: DadosIr; r: ReturnType<typeof resum
 }
 
 // ---------------------------------------------------------------------------
-const CAMPOS: [keyof Mensal, string][] = [['salario_liquido', 'Salário líquido'], ['ferias_terco', 'Férias + 1/3'], ['inss_folha', 'INSS folha'], ['inss_ferias', 'INSS férias'], ['ir_folha', 'IR folha'],
+const CAMPOS: [keyof Mensal, string][] = [['salario_liquido', 'Salário líquido'], ['ferias_terco', 'Férias + 1/3'], ['decimo_terceiro', '13º salário (líquido)'], ['inss_folha', 'INSS folha'], ['inss_ferias', 'INSS férias'], ['ir_folha', 'IR folha'],
   ['ir_ferias', 'IR férias'], ['ir_vinculo_unico', 'IR vínculo único'], ['plano_saude', 'Plano de saúde'], ['odontologico', 'Odontológico'], ['ensino', 'Ensino'], ['medico_fora', 'Médico fora do plano']];
 
 function MesAMes({ d, ano, onMudou }: { d: DadosIr; ano: number; onMudou: () => void }) {
@@ -181,7 +182,7 @@ function MesAMes({ d, ano, onMudou }: { d: DadosIr; ano: number; onMudou: () => 
   const meses = Array.from({ length: 12 }, (_, i) => `${ano}-${String(i + 1).padStart(2, '0')}-01`);
   return (
     <>
-      <p className="sub">Digite os valores do contracheque de cada mês. Planos de previdência ficam dentro do mês.</p>
+      <p className="sub">Digite os valores do contracheque de cada mês. O líquido (com férias e 13º) vira a renda do Mês em que o dinheiro entrou, e as contas de previdência do Mês entram aqui sozinhas.</p>
       <ul className="razao">
         {meses.map((m) => {
           const x = d.mensal.find((k) => k.competencia === m);
@@ -203,7 +204,7 @@ function MesAMes({ d, ano, onMudou }: { d: DadosIr; ano: number; onMudou: () => 
 
 function EditarMes({ d, comp, onFechar, onSalvo }: { d: DadosIr; comp: string; onFechar: () => void; onSalvo: () => void }) {
   const x = d.mensal.find((k) => k.competencia === comp);
-  const [v, setV] = useState<Record<string, string>>(Object.fromEntries(CAMPOS.map(([k]) => [k, x?.[k] != null ? String(x[k]).replace('.', ',') : ''])));
+  const [v, setV] = useState<Record<string, string>>({ ...Object.fromEntries(CAMPOS.map(([k]) => [k, x?.[k] != null ? String(x[k]).replace('.', ',') : ''])), recebido_em: x?.recebido_em ?? '' });
   const [obs, setObs] = useState(x?.obs_medico ?? '');
   const [plano, setPlano] = useState({ nome: '', tipo: 'PGBL' as 'PGBL' | 'VGBL', valor: '' });
   const planos = d.previdencia.filter((p) => p.competencia === comp);
@@ -213,10 +214,12 @@ function EditarMes({ d, comp, onFechar, onSalvo }: { d: DadosIr; comp: string; o
     <Modal titulo={nomeMes(comp)} onFechar={onFechar}>
       <div className="campos">
         {CAMPOS.map(([k, t]) => <label key={k}>{t}<input inputMode="decimal" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></label>)}
+        <label>Recebido em<input type="date" value={v.recebido_em ?? ''} onChange={(e) => setV({ ...v, recebido_em: e.target.value })} /></label>
         <label className="campo-largo">Observação das despesas médicas<input value={obs} maxLength={200} onChange={(e) => setObs(e.target.value)} /></label>
       </div>
       <h3 className="inspetor-sec">Previdência neste mês</h3>
-      <ul className="onde-lista">{planos.map((p) => <li key={p.id}><span>{p.plano}</span><span className="sub">{p.tipo}</span><span className="num">{brl(p.valor)} <button className="link-acao" onClick={() => rodar(async () => { await removerPrevidencia(p.id); onSalvo(); })}>Remover</button></span></li>)}</ul>
+      <ul className="onde-lista">{planos.map((p) => <li key={p.id}><span>{p.plano}</span><span className="sub">{p.tipo}{p.origem === 'conta' ? ' · da conta do Mês' : ''}</span><span className="num">{brl(p.valor)} {p.origem === 'conta' ? <Link to="/mes" className="link-acao">Alterar no Mês</Link> : <button className="link-acao" onClick={() => rodar(async () => { await removerPrevidencia(p.id); onSalvo(); })}>Remover</button>}</span></li>)}</ul>
+      <p className="sub">Contas de previdência do Mês entram aqui sozinhas. Lance à mão só o que não é conta (ex.: desconto em folha).</p>
       <div className="campos">
         <label>Plano<input list="planos-conhecidos" value={plano.nome} onChange={(e) => setPlano({ ...plano, nome: e.target.value })} /><datalist id="planos-conhecidos">{conhecidos.map((p) => <option key={p} value={p} />)}</datalist></label>
         <label>Tipo<select value={plano.tipo} onChange={(e) => setPlano({ ...plano, tipo: e.target.value as 'PGBL' | 'VGBL' })}><option>PGBL</option><option>VGBL</option></select></label>
@@ -224,7 +227,7 @@ function EditarMes({ d, comp, onFechar, onSalvo }: { d: DadosIr; comp: string; o
       </div>
       <Erro msg={erro} />
       <button className="pri" disabled={ocupado} onClick={() => rodar(async () => {
-        const dados: Partial<Mensal> & { competencia: string } = { competencia: comp, obs_medico: obs.trim() || null };
+        const dados: Partial<Mensal> & { competencia: string } = { competencia: comp, obs_medico: obs.trim() || null, recebido_em: v.recebido_em || null };
         for (const [k] of CAMPOS) (dados as Record<string, unknown>)[k] = numeroDe(v[k]);
         await salvarMensal(dados);
         const val = numeroDe(plano.valor);

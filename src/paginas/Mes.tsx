@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight, Pencil, Plus, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { FormConta } from './Contas';
+import { folhasRecebidasEm } from '../lib/dadosIr';
+import type { Mensal } from '../lib/ir';
 import { supabase, ok } from '../lib/supabase';
 // RF-12, RF-13, RF-14, RF-16: tela "Mês" (equivalente à aba mensal da planilha).
 import { useEffect, useState } from 'react';
@@ -8,8 +10,9 @@ import { dadosDoMes, salvarRenda, adicionarPagamento, removerPagamento, type Con
 import { statusConta } from '../lib/regras';
 import { pctBR, brl, dataBR, hojeBrasilia, competenciaDe, somaMeses, nomeMes, somaCentavos } from '../lib/formato';
 import { Carregando, Erro, Modal, Situacao, numeroDe, useAcao, useCadastros } from '../ui/comum';
+import { Logo } from '../ui/Logo';
 
-export type Item = { tipo: 'conta' | 'fatura'; id: string; nome: string; vencimento: string | null; valor: number; mario: number; pagamentos: PagamentoDb[]; banco: string | null; obs?: string | null; extra?: string };
+export type Item = { tipo: 'conta' | 'fatura'; id: string; nome: string; vencimento: string | null; valor: number; mario: number; pagamentos: PagamentoDb[]; banco: string | null; obs?: string | null; extra?: string; irPlano?: string | null };
 
 export function Mes() {
   const { c } = useCadastros();
@@ -19,13 +22,15 @@ export function Mes() {
   const [pagando, setPagando] = useState<Item | null>(null);
   const [detalhe, setDetalhe] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Conta> | null>(null);
+  const [folhas, setFolhas] = useState<Mensal[]>([]);
   const [rapido, setRapido] = useState<{ valor: string; vencimento: string } | null>(null);
   const { erro, rodar } = useAcao();
   const hoje = hojeBrasilia();
 
   const carregar = () => rodar(async () => {
-    const d = await dadosDoMes(comp);
+    const [d, f] = await Promise.all([dadosDoMes(comp), folhasRecebidasEm(comp).catch(() => [])]);
     setDados(d);
+    setFolhas(f);
     setRenda(d.mes?.renda != null ? String(d.mes.renda).replace('.', ',') : '');
   });
   useEffect(() => { setDados(null); carregar(); }, [comp]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -33,7 +38,7 @@ export function Mes() {
   const cartao = (id: string) => c.cartoes.find((x) => x.id === id);
   const itens: Item[] = dados
     ? [
-        ...dados.contas.map((k: Conta): Item => ({ tipo: 'conta', id: k.id, nome: k.descricao, vencimento: k.vencimento, valor: k.valor, mario: k.total_mario ?? 0, pagamentos: k.pagamentos, banco: k.banco_pagamento, obs: k.observacao })),
+        ...dados.contas.map((k: Conta): Item => ({ tipo: 'conta', id: k.id, nome: k.descricao, vencimento: k.vencimento, valor: k.valor, mario: k.total_mario ?? 0, pagamentos: k.pagamentos, banco: k.banco_pagamento, obs: k.observacao, irPlano: (k as Conta & { ir_plano?: string | null }).ir_plano })),
         ...dados.faturas
           .filter((f: FaturaResumo) => f.confirmada || f.qtd_linhas > 0 || f.pagamentos.length > 0)
           .map((f): Item => ({ tipo: 'fatura', id: f.invoice_id, nome: cartao(f.card_id)?.apelido ?? 'Cartão', vencimento: f.vencimento, valor: f.total, mario: f.total_mario, pagamentos: f.pagamentos, banco: cartao(f.card_id)?.banco_pagamento ?? null, extra: f.qtd_nao_conferidas ? `${f.qtd_nao_conferidas} lançamento(s) não conferido(s)` : undefined })),
@@ -62,6 +67,12 @@ export function Mes() {
             <div><dt>Da renda</dt><dd>{rendaNum ? pctBR(totalMario / rendaNum) : '—'}</dd></div>
             <div><dt>Pendências</dt><dd className={pendentes.length ? 'alerta-txt' : ''}>{pendentes.length}</dd></div>
           </dl>
+          {folhas.length ? (
+            <div className="renda-ir">
+              <div><span className="sub">Renda líquida do mês</span><strong className="num">{brl(rendaNum ?? 0)}</strong></div>
+              <p className="sub">Vem do Imposto de Renda: {folhas.map((f) => [f.salario_liquido ? `folha de ${nomeMes(f.competencia).toLowerCase().replace(/ de \d{4}/, '')}` : null, f.ferias_terco ? 'férias' : null, f.decimo_terceiro ? '13º' : null].filter(Boolean).join(', ')).join(' + ')}. <Link to="/ir" className="link-acao" style={{ padding: 0 }}>Corrigir no IR</Link></p>
+            </div>
+          ) : (
           <div className="campos renda-linha">
             <label>Renda líquida do mês
               <input inputMode="decimal" value={renda} placeholder={dados.rendaSugerida != null ? `sugestão: ${brl(dados.rendaSugerida)}` : ''}
@@ -70,7 +81,9 @@ export function Mes() {
             {rendaNum == null && dados.rendaSugerida != null && (
               <button onClick={() => rodar(async () => { await salvarRenda(comp, dados.rendaSugerida); await carregar(); })}>Usar {brl(dados.rendaSugerida)}</button>
             )}
+            <p className="sub campo-largo" style={{ margin: 0 }}>Dica: lançando a folha em Imposto de Renda → Mês a mês, a renda passa a vir de lá sozinha.</p>
           </div>
+          )}
           {!itens.length && <p className="sub">Nenhuma conta ou fatura neste mês. Cadastre contas recorrentes em “Contas” ou importe faturas em “Faturas”.</p>}
           <ul className="razao">
             {itens.map((i) => {
@@ -78,7 +91,7 @@ export function Mes() {
               return (
                 <li key={i.tipo + i.id}>
                   <button className="razao-linha" onClick={() => setDetalhe(i.tipo + i.id)}>
-                    <span className="razao-cod">{i.nome}{i.tipo === 'fatura' && <span className="selo-inst">fatura</span>}</span>
+                    <span className="razao-cod com-logo"><Logo nome={i.tipo === 'fatura' ? i.nome : i.banco} />{i.nome}{i.tipo === 'fatura' && <span className="selo-inst">fatura</span>}{i.irPlano && <span className="selo-inst" title="Entra no Imposto de Renda como contribuição de previdência">IR</span>}</span>
                     <span className="razao-valor num">{brl(i.valor)}</span>
                     <span className="razao-det">vence {dataBR(i.vencimento).slice(0, 5)}{i.mario !== i.valor ? ` · sua parte ${brl(i.mario)}` : ''}{i.extra && <> · <span className="alerta-txt">{i.extra}</span></>}</span>
                     <span className="razao-var num"><Situacao tipo={st.tipo} diferenca={'diferenca' in st ? st.diferenca : undefined} vencimento={i.vencimento} hoje={hoje} /></span>
@@ -111,6 +124,7 @@ export function Mes() {
             <div><dt>Vencimento</dt><dd>{dataBR(aberto.vencimento)}</dd></div>
             <div><dt>Sua parte</dt><dd>{brl(aberto.mario)}{rendaNum ? ` (${pctBR(aberto.mario / rendaNum, 2)} da renda)` : ''}</dd></div>
             {aberto.banco && <div><dt>Banco de pagamento</dt><dd>{aberto.banco}</dd></div>}
+            {aberto.irPlano && <div><dt>Imposto de Renda</dt><dd>previdência {aberto.irPlano}: o valor desta conta vai para o IR</dd></div>}
           </dl>
           )}
           {!rapido && (aberto.tipo === 'conta' ? (

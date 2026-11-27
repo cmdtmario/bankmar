@@ -73,7 +73,10 @@ function FormModelo({ m, onFechar, onSalvo }: { m: Partial<Modelo>; onFechar: ()
         <label>Categoria<select value={f.category_id ?? ''} onChange={(e) => setF({ ...f, category_id: e.target.value || null })}>
           <option value="">—</option>{c.categorias.map((k) => <option key={k.id} value={k.id}>{k.nome}</option>)}</select></label>
         <label>Ativa<select value={f.ativo ? '1' : '0'} onChange={(e) => setF({ ...f, ativo: e.target.value === '1' })}><option value="1">Sim</option><option value="0">Não</option></select></label>
+        <label>Previdência no IR (plano)<input value={(f as Record<string, unknown>).ir_plano as string ?? ''} placeholder="vazio = não é previdência" onChange={(e) => setF({ ...f, ir_plano: e.target.value || null } as typeof f)} /></label>
+        {(f as Record<string, unknown>).ir_plano ? <label>Tipo<select value={((f as Record<string, unknown>).ir_tipo as string) ?? 'PGBL'} onChange={(e) => setF({ ...f, ir_tipo: e.target.value } as typeof f)}><option>PGBL</option><option>VGBL</option></select></label> : null}
       </div>
+      <p className="sub">Previdência no IR: o valor de cada mês desta conta entra sozinho nas contribuições do Imposto de Renda.</p>
       <h2>Divisão</h2>
       <EditorDivisao valor={v ?? 100} regra={f.split_rule as RegraDivisao} onChange={(r) => setF({ ...f, split_rule: r })} />
       {v == null && <p className="sub">Prévia calculada sobre R$ 100,00 (valor variável).</p>}
@@ -82,7 +85,8 @@ function FormModelo({ m, onFechar, onSalvo }: { m: Partial<Modelo>; onFechar: ()
         if (!f.descricao?.trim()) throw new Error('Informe a descrição.');
         if (contemNumeroCartao(f.descricao)) throw new Error('A descrição parece conter um número de cartão. Não guarde esse dado aqui.');
         if (!divisaoValida(v ?? 100, f.split_rule as RegraDivisao)) throw new Error('Corrija a divisão.');
-        const dados = { descricao: f.descricao, dia_vencimento: f.dia_vencimento, valor_padrao: v, banco_pagamento: f.banco_pagamento ?? null, category_id: f.category_id ?? null, split_rule: f.split_rule, ativo: f.ativo ?? true };
+        const ir = f as Record<string, unknown>;
+        const dados = { descricao: f.descricao, dia_vencimento: f.dia_vencimento, valor_padrao: v, banco_pagamento: f.banco_pagamento ?? null, category_id: f.category_id ?? null, split_rule: f.split_rule, ativo: f.ativo ?? true, ir_plano: (ir.ir_plano as string | null) ?? null, ir_tipo: ir.ir_plano ? ((ir.ir_tipo as string) ?? 'PGBL') : null };
         if (m.id) ok(await supabase.from('bill_templates').update(dados).eq('id', m.id));
         else ok(await supabase.from('bill_templates').insert(dados));
         onSalvo();
@@ -152,6 +156,8 @@ export function FormConta({ k, onFechar, onSalvo }: { k: Partial<Conta>; onFecha
         <label>Categoria<select value={f.category_id ?? ''} onChange={(e) => setF({ ...f, category_id: e.target.value || null })}>
           <option value="">—</option>{c.categorias.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></label>
         <label>Observação<input value={f.observacao ?? ''} onChange={(e) => setF({ ...f, observacao: e.target.value || null })} /></label>
+        <label>Previdência no IR (plano)<input value={(f as Record<string, unknown>).ir_plano as string ?? ''} placeholder="vazio = não é previdência" onChange={(e) => setF({ ...f, ir_plano: e.target.value || null } as typeof f)} /></label>
+        {(f as Record<string, unknown>).ir_plano ? <label>Tipo<select value={((f as Record<string, unknown>).ir_tipo as string) ?? 'PGBL'} onChange={(e) => setF({ ...f, ir_tipo: e.target.value } as typeof f)}><option>PGBL</option><option>VGBL</option></select></label> : null}
       </div>
       <p className="sub">Mês: {f.competencia ? nomeMes(f.competencia) : '—'}</p>
       <h2>Divisão</h2>
@@ -162,7 +168,8 @@ export function FormConta({ k, onFechar, onSalvo }: { k: Partial<Conta>; onFecha
           if (!f.descricao?.trim()) throw new Error('Informe a descrição.');
           if (contemNumeroCartao(f.descricao) || contemNumeroCartao(f.observacao)) throw new Error('O texto parece conter um número de cartão. Não guarde esse dado aqui.');
           if (!divisaoValida(v, f.split_rule as RegraDivisao)) throw new Error('Corrija a divisão.');
-          const dados = { competencia: f.competencia, descricao: f.descricao, vencimento: f.vencimento ?? null, valor: v, category_id: f.category_id ?? null, split_rule: f.split_rule, observacao: f.observacao ?? null };
+          const ir = f as Record<string, unknown>;
+          const dados = { competencia: f.competencia, descricao: f.descricao, vencimento: f.vencimento ?? null, valor: v, category_id: f.category_id ?? null, split_rule: f.split_rule, observacao: f.observacao ?? null, ir_plano: (ir.ir_plano as string | null) ?? null, ir_tipo: ir.ir_plano ? ((ir.ir_tipo as string) ?? 'PGBL') : null };
           if (k.id) ok(await supabase.from('bills').update(dados).eq('id', k.id));
           else {
             ok(await supabase.from('bills').insert({ ...dados, origem: f.origem === 'boleto' ? 'boleto' : 'manual' }));

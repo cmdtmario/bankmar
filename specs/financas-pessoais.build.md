@@ -209,3 +209,21 @@ Abreviação usada nos caminhos: `M` = `supabase/migrations/20261125000000_entre
 ## Pendências para o revisor
 - Revisar a tabela de códigos de 2026 em Imposto de Renda → Configurar.
 - Publicar as funções `beneficios-mensal` e `investimentos-diario` e rodar o agendamento.
+
+---
+
+# Ajustes de 27/11/2026 (pedidos do Mário)
+
+| Pedido | Onde | Como verificar |
+|--------|------|----------------|
+| Leitor de PDF para os demais cartões | `lib/faturas/generico.ts` (emissor "outro") | `leitores.test.ts`: lê a fatura da Caixa sem conhecer o layout (8 linhas, R$ 2.197,44); não mistura colunas do Itaú; formato "03 NOV", crédito, dólar + real, "Parcela 2/6" |
+| Senha do PDF guardada | `lib/senhasPdf.ts`, Ajustes e importações, `faturas/pdf.ts` | o sistema tenta as senhas guardadas antes de perguntar e oferece guardar a que você digitar |
+| Logos de bancos e programas | `ui/Logo.tsx` em Início, Mês, Faturas, Cartões, Investimentos e Milhas | ícone do site da instituição; sigla colorida se não carregar |
+| Renda do mês vem do IR | migração `20261127020000_integracao_ir.sql` (`recalcular_renda`), Mês | testes SQL: líquido + férias + 13º recebidos no mês; corrigir o IR corrige a renda |
+| Previdência: conta do Mês = contribuição do IR | mesma migração (`bills_ir_sync`), campo "Previdência no IR" nas contas | testes SQL: criar, alterar e excluir a conta reflete no IR, sem duplicar com o lançamento manual |
+
+## Decisões que mudam a spec
+- Caso 2 (PDF com senha): a senha pode ser guardada **só no aparelho**, cifrada pelo navegador (AES-GCM, chave não exportável). Continua sem nenhum campo de senha no banco de dados.
+- RF-13: quando há folha lançada no IR para o mês em que o dinheiro entrou, a renda do Mês vem de lá e não é digitada; sem folha, continua manual.
+- RF-75: contribuições de previdência que são contas no Mês entram no IR sozinhas; à mão só o que não é conta. Contas que começam com "Previdência" já foram ligadas pelo nome do plano.
+- RF-21: o leitor genérico atende os bancos sem leitor próprio; a conferência do total (RF-26) continua obrigatória.

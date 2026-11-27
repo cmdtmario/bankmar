@@ -8,6 +8,7 @@ import {
 import { cashbackRenunciado, cpfsUsados, custoMilheiro, lerControleMilhas, lucroVenda, pontosPrevistos, saldoImportado, transferencia } from '../lib/milhas';
 import { brl, dataBR, hojeBrasilia, nomeMes, somaCentavos } from '../lib/formato';
 import { Carregando, Erro, Modal, numeroDe, useAcao } from '../ui/comum';
+import { Logo } from '../ui/Logo';
 
 type Aba = 'resumo' | 'movimentos' | 'vendas' | 'emissoes' | 'importar';
 const ABAS: [Aba, string][] = [['resumo', 'Resumo'], ['movimentos', 'Movimentos'], ['vendas', 'Vendas'], ['emissoes', 'Emissões'], ['importar', 'Importar']];
@@ -88,7 +89,7 @@ function Resumo({ d, onMudou }: { d: DadosMilhas; onMudou: () => void }) {
       <thead><tr><th>Programa</th><th className="num">Saldo</th><th className="num">Milheiro</th><th className="num">CPFs</th></tr></thead>
       <tbody>{ls.map(({ p, cs, saldo, custoMil, usados }) => (
         <tr key={p.id} tabIndex={0} onClick={() => setProg(p)} onKeyDown={(e) => { if (e.key === 'Enter') setProg(p); }} style={{ cursor: 'pointer' }}>
-          <td><strong>{p.nome}</strong>{cs.length > 1 && <div className="sub nome-ativo">{cs.map((c) => `${c.titular} ${pts(c.saldo)}`).join(' · ')}</div>}</td>
+          <td><strong className="com-logo"><Logo nome={p.nome} sempre />{p.nome}</strong>{cs.length > 1 && <div className="sub nome-ativo">{cs.map((c) => `${c.titular} ${pts(c.saldo)}`).join(' · ')}</div>}</td>
           <td className="num"><strong>{pts(saldo)}</strong></td>
           <td className="num">{mil(custoMil)}</td>
           <td className="num">{p.limite_cpfs != null ? <span className={usados >= p.limite_cpfs ? 'neg' : ''}>{usados} de {p.limite_cpfs}</span> : <span className="sub">{usados} · sem limite</span>}</td>

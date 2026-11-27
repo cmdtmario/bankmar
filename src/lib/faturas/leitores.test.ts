@@ -67,7 +67,7 @@ describe('Escolha do leitor por emissor', () => {
   it('usa o leitor do emissor do cartão', () => {
     expect(lerFatura('itau', itauFix as TextItem[]).emissor).toBe('itau');
     expect(() => lerFatura('caixa', itauFix as TextItem[])).toThrow(/Caixa não reconheceu/);
-    expect(() => lerFatura('outro', itauFix as TextItem[])).toThrow(/não há leitor/i);
+    expect(lerFatura('outro', caixaFix as TextItem[]).emissor).toBe('generico');
   });
 });
 
@@ -101,5 +101,36 @@ describe('Utilidades', () => {
   it('inferirData recua ano de parcela antiga', () => {
     expect(inferirData('10/07', '2026-08-08', 14)).toBe('2025-07-10');
     expect(inferirData('09/12', '2027-01-10', null)).toBe('2026-12-09');
+  });
+});
+
+import { lerGenerico } from './generico';
+describe('Leitor genérico (cartões sem leitor próprio)', () => {
+  it('lê a fatura da Caixa sem conhecer o layout e confere com o leitor próprio', () => {
+    const g = lerGenerico(caixaFix as TextItem[]);
+    expect([g.vencimento, g.linhas.length, soma(g.linhas)]).toEqual(['2026-08-08', 8, 2197.44]);
+  });
+  it('não mistura colunas nem lê parcelas de faturas futuras (Itaú em duas colunas)', () => {
+    const g = lerGenerico(itauFix as TextItem[]);
+    expect(g.linhas.length).toBeGreaterThanOrEqual(38);
+    expect(g.linhas.some((l) => /Limite de cr/i.test(l.descricao))).toBe(false);
+    expect(g.linhas.find((l) => l.descricao === 'AZULCLFQGT')?.parcelaAtual).toBe(12);
+  });
+  it('formato com mês por extenso, crédito negativo, dólar + real e "Parcela x/y"', () => {
+    const t = (y: number, ...partes: [number, string][]) => partes.map(([x, s]) => ({ p: 1, x, y, s }));
+    const itens: TextItem[] = [
+      ...t(40, [20, 'Data de vencimento'], [200, '15 DEZ 2026']),
+      ...t(60, [20, 'Total desta fatura'], [200, 'R$ 1.234,56']),
+      ...t(100, [20, '03 NOV'], [80, 'Mercado Livre - Parcela 2/6'], [400, 'R$ 150,00']),
+      ...t(115, [20, '05 NOV'], [80, 'Estorno de compra'], [400, '−R$ 20,00']),
+      ...t(130, [20, '07 NOV'], [80, 'Netflix.com USD 10,00'], [330, '10,00'], [400, '55,90']),
+      ...t(145, [20, '10 NOV'], [80, 'Pagamento recebido'], [400, '−R$ 900,00']),
+    ];
+    const g = lerGenerico(itens);
+    expect(g.vencimento).toBe('2026-12-15');
+    expect(g.totalEsperado).toBe(1234.56);
+    expect(g.linhas.map((l) => [l.data, l.descricao, l.parcelaAtual, l.valor])).toEqual([
+      ['2026-11-03', 'Mercado Livre', 2, 150], ['2026-11-05', 'Estorno de compra', null, -20], ['2026-11-07', 'Netflix.com USD 10,00', null, 55.9],
+    ]);
   });
 });

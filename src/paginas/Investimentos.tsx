@@ -13,6 +13,7 @@ import { lerPlanilhaAntiga, conciliar, type Divergencia } from '../lib/investime
 import { brl, dataBR, pctBR, somaCentavos, competenciaDe, hojeBrasilia, somaMeses, nomeMes } from '../lib/formato';
 import { Contador, Esqueleto } from '../ui/animacao';
 import { Erro, Modal, numeroDe, useAcao } from '../ui/comum';
+import { Logo } from '../ui/Logo';
 import { TEMA } from '../ui/tema';
 
 type Aba = 'resumo' | 'ativos' | 'proventos' | 'importar';
@@ -384,7 +385,7 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
         </div>
         {grupos.map((g) => (
           <section key={g.g} className="grupo">
-            <h3 className="grupo-titulo"><span>{nomeGrupo(g.g)}</span><span className="num">{brl(g.valor)}</span></h3>
+            <h3 className="grupo-titulo"><span className="com-logo">{agrupar === 'instituicao' && <Logo nome={g.g} tamanho={16} />}{nomeGrupo(g.g)}</span><span className="num">{brl(g.valor)}</span></h3>
             <ul className="razao">
               {g.itens.map((l) => {
                 const { a } = l; const p = precoDe(a); const d = detalhe(l);
@@ -417,7 +418,7 @@ function Ativos({ c, ind, onSalvo }: { c: Carteira; ind: Map<string, Indicadores
             </thead>
             {grupos.map((g) => (
               <tbody key={g.g}>
-                <tr className="linha-grupo"><th colSpan={7} scope="rowgroup">{nomeGrupo(g.g)} <span className="sub">{g.itens.length}</span></th><td className="num">{brl(g.valor)}</td><td className="num">{pctBR(total ? g.valor / total : 0)}</td></tr>
+                <tr className="linha-grupo"><th colSpan={7} scope="rowgroup"><span className="com-logo">{agrupar === 'instituicao' && <Logo nome={g.g} tamanho={16} />}{nomeGrupo(g.g)}</span> <span className="sub">{g.itens.length}</span></th><td className="num">{brl(g.valor)}</td><td className="num">{pctBR(total ? g.valor / total : 0)}</td></tr>
                 {g.itens.map((l) => {
                   const { a, i } = l; const p = precoDe(a); const d = detalhe(l);
                   return (
@@ -455,7 +456,7 @@ function OndeEsta({ a }: { a: Ativo }) {
     <ul className="onde-lista">
       {a.porInstituicao.map((p) => (
         <li key={p.instituicao}>
-          <span>{p.instituicao}</span>
+          <span className="com-logo"><Logo nome={p.instituicao} tamanho={16} sempre />{p.instituicao}</span>
           <span className="num sub">{neg ? `${p.quantidade.toLocaleString('pt-BR')} ${p.quantidade === 1 ? 'cota' : 'cotas'}` : ''}</span>
           <span className="num">{brl(p.valor)}</span>
         </li>

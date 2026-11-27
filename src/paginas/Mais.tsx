@@ -7,6 +7,7 @@ import { sugerirCategoria, type RegraCategoria } from '../lib/regras';
 import { exportarTudo } from '../lib/exportar';
 import { brl, nomeMes } from '../lib/formato';
 import { ativarPush } from '../lib/push';
+import { listarSenhas, removerSenha, salvarSenha, type SenhaSalva } from '../lib/senhasPdf';
 import { Erro, Modal, useAcao, useCadastros } from '../ui/comum';
 
 export function Mais() {
@@ -30,6 +31,8 @@ export function Mais() {
       <h1>Ajustes e importações</h1>
       <Erro msg={erro} />
       {msg && <div className="okmsg">{msg}</div>}
+
+      <SenhasPdf />
 
       <h2>Avisos de vencimento</h2>
       <div className="card">
@@ -100,5 +103,38 @@ function PreviaPlanilha({ plan, onFechar, onFeito }: { plan: { r: ResultadoImpor
         onFeito(`Importado: ${d.contas} contas, ${d.faturas} faturas, ${d.lancamentos} lançamentos. Revise os cartões (final e dia de vencimento) em “Mais”.`);
       })}>Gravar no sistema</button>
     </Modal>
+  );
+}
+
+/** Senhas dos PDFs de fatura: só neste aparelho, cifradas; o sistema tenta todas ao abrir um PDF protegido. */
+function SenhasPdf() {
+  const [lista, setLista] = useState<SenhaSalva[]>([]);
+  const [nova, setNova] = useState({ rotulo: '', senha: '' });
+  const [ver, setVer] = useState(false);
+  const { erro, ocupado, rodar } = useAcao();
+  const carregar = () => rodar(async () => setLista(await listarSenhas()));
+  useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <>
+      <h2>Senhas dos PDFs de fatura</h2>
+      <p className="sub">Ao importar um PDF com senha, o BankMaR tenta estas senhas sozinho. Elas ficam só neste aparelho, cifradas no navegador: não vão para o servidor nem para o backup. Em outro aparelho, cadastre de novo.</p>
+      {lista.length > 0 && (
+        <ul className="onde-lista">
+          {lista.map((x) => (
+            <li key={x.id}><span>{x.rotulo}</span><span className="sub">desde {new Date(x.criadaEm).toLocaleDateString('pt-BR')}</span>
+              <span className="num"><button className="link-acao" onClick={() => rodar(async () => { await removerSenha(x.id); await carregar(); })}>Esquecer</button></span></li>
+          ))}
+        </ul>
+      )}
+      <div className="campos">
+        <label>Cartão ou banco<input value={nova.rotulo} placeholder="ex.: Nubank" onChange={(e) => setNova({ ...nova, rotulo: e.target.value })} /></label>
+        <label>Senha do PDF<input type={ver ? 'text' : 'password'} autoComplete="off" value={nova.senha} onChange={(e) => setNova({ ...nova, senha: e.target.value })} /></label>
+      </div>
+      <div className="linha" style={{ marginTop: 8 }}>
+        <button className="pri" disabled={ocupado} onClick={() => rodar(async () => { await salvarSenha(nova.rotulo, nova.senha); setNova({ rotulo: '', senha: '' }); await carregar(); })}>Guardar senha</button>
+        <button className="link-acao" onClick={() => setVer(!ver)}>{ver ? 'Esconder' : 'Mostrar'} senha</button>
+      </div>
+      <Erro msg={erro} />
+    </>
   );
 }

@@ -7,16 +7,22 @@ import { LeitorError } from './tipos';
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 /**
- * Caso 2: PDF protegido — pede a senha só para abrir o arquivo agora (não é guardada).
- * `pedirSenha` devolve null se o usuário desistir.
+ * Caso 2 (revisto em 27/11/2026): PDF protegido — tenta primeiro as senhas guardadas neste aparelho;
+ * se nenhuma servir, pede ao usuário. `pedirSenha` devolve null se ele desistir.
+ * `senhaDigitada` recebe a senha que o usuário digitou e abriu o arquivo (para oferecer guardar).
  */
-export async function extrairItens(arquivo: File, pedirSenha: (tentativaErrada: boolean) => Promise<string | null>): Promise<TextItem[]> {
+export async function extrairItens(arquivo: File, pedirSenha: (tentativaErrada: boolean) => Promise<string | null>, senhasSalvas: string[] = [], senhaDigitada?: (s: string) => void): Promise<TextItem[]> {
   const dados = new Uint8Array(await arquivo.arrayBuffer());
   const tarefa = pdfjs.getDocument({ data: dados });
+  const fila = [...senhasSalvas];
+  let ultimaDigitada: string | null = null;
+  let errouDigitada = false;
   tarefa.onPassword = async (responder: (s: string) => void, motivo: number) => {
-    const senha = await pedirSenha(motivo === pdfjs.PasswordResponses.INCORRECT_PASSWORD);
+    if (fila.length) { responder(fila.shift()!); return; }
+    errouDigitada = ultimaDigitada != null && motivo === pdfjs.PasswordResponses.INCORRECT_PASSWORD;
+    const senha = await pedirSenha(errouDigitada);
     if (senha == null) tarefa.destroy();
-    else responder(senha);
+    else { ultimaDigitada = senha; responder(senha); }
   };
   let doc;
   try {
@@ -24,6 +30,7 @@ export async function extrairItens(arquivo: File, pedirSenha: (tentativaErrada: 
   } catch (e) {
     throw new LeitorError(`Não foi possível abrir o PDF${e instanceof Error && /password/i.test(e.message) ? ' (senha não informada)' : ''}. Use "Colar texto".`);
   }
+  if (ultimaDigitada) senhaDigitada?.(ultimaDigitada);
   const itens: TextItem[] = [];
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);

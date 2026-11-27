@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase, ok } from './supabase';
-import { CODIGOS_PADRAO, FICHAS, PARAMETROS_PADRAO, type ChaveCodigo, type Codigo, type ItemIR, type Mensal, type MesRV, type Parametros, type Previdencia } from './ir';
+import { CODIGOS_PADRAO, FICHAS, PARAMETROS_PADRAO, normPlano, type ChaveCodigo, type Codigo, type ItemIR, type Mensal, type MesRV, type Parametros, type Previdencia } from './ir';
 import type { Movimentacao, Negociacao, Posicao } from './investimentos/b3';
 import { criarAgrupador, type Ajuste } from './investimentos/carteira';
 import type { Classe } from './investimentos/b3';
@@ -20,7 +20,7 @@ async function todas<T>(tabela: string, ordem = 'id'): Promise<T[]> {
   }
 }
 const num = <T extends object>(xs: T[], campos: string[]) => xs.map((x) => { const r = { ...x } as Record<string, unknown>; for (const c of campos) if (r[c] != null) r[c] = Number(r[c]); return r as T; });
-const CAMPOS_MENSAL = ['salario_liquido', 'ferias_terco', 'inss_folha', 'inss_ferias', 'ir_folha', 'ir_ferias', 'ir_vinculo_unico', 'plano_saude', 'odontologico', 'ensino', 'medico_fora'];
+const CAMPOS_MENSAL = ['decimo_terceiro', 'salario_liquido', 'ferias_terco', 'inss_folha', 'inss_ferias', 'ir_folha', 'ir_ferias', 'ir_vinculo_unico', 'plano_saude', 'odontologico', 'ensino', 'medico_fora'];
 
 export async function carregarIr(ano: number) {
   const [mensal, prev, cfg, conf] = await Promise.all([
@@ -60,7 +60,10 @@ export async function marcarConferencia(ano: number, item: string, situacao: Con
 /** RF-93: grava a aba IRRF (substitui os meses e planos que vierem na planilha). */
 export async function importarIrrf(r: { mensal: Mensal[]; previdencia: Previdencia[] }, arquivo: string) {
   for (let i = 0; i < r.mensal.length; i += 100) ok(await supabase.from('ir_mensal').upsert(r.mensal.slice(i, i + 100), { onConflict: 'user_id,competencia' }));
-  for (let i = 0; i < r.previdencia.length; i += 200) ok(await supabase.from('ir_previdencia').upsert(r.previdencia.slice(i, i + 200), { onConflict: 'user_id,competencia,plano' }));
+  // Planos que já vêm das contas do Mês não são sobrescritos pela planilha (a conta é a fonte).
+  const daConta = new Set((ok(await supabase.from('ir_previdencia').select('competencia, plano').eq('origem', 'conta')) as { competencia: string; plano: string }[]).map((x) => `${x.competencia}|${x.plano}`));
+  const prev = r.previdencia.map((p) => ({ ...p, plano: normPlano(p.plano) })).filter((p) => !daConta.has(`${p.competencia}|${p.plano}`));
+  for (let i = 0; i < prev.length; i += 200) ok(await supabase.from('ir_previdencia').upsert(prev.slice(i, i + 200), { onConflict: 'user_id,competencia,plano' }));
   ok(await supabase.from('import_log').insert({ tipo: 'irrf', arquivo, importadas: r.mensal.length + r.previdencia.length, ignoradas: 0, detalhes: { meses: r.mensal.length, previdencia: r.previdencia.length } }));
 }
 
@@ -128,4 +131,11 @@ export function exportarPdfIr(ano: number, itens: ItemIR[], rv: MesRV[]) {
     styles: { fontSize: 8 }, headStyles: { fillColor: [40, 36, 28] },
   });
   doc.save(`ir-${ano}-apoio-declaracao.pdf`);
+}
+
+/** Folhas do IR cujo dinheiro entrou neste mês (mesma regra do banco: recebido_em, ou o mês seguinte à folha). */
+export async function folhasRecebidasEm(comp: string): Promise<Mensal[]> {
+  const ant = new Date(Date.parse(comp + 'T12:00:00Z')); ant.setUTCMonth(ant.getUTCMonth() - 2);
+  const rows = num(ok(await supabase.from('ir_mensal').select('*').gte('competencia', ant.toISOString().slice(0, 10)).lte('competencia', comp)) as Mensal[], CAMPOS_MENSAL);
+  return rows.filter((m) => (m.recebido_em ? m.recebido_em.slice(0, 7) : (() => { const d = new Date(Date.parse(m.competencia + 'T12:00:00Z')); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 7); })()) === comp.slice(0, 7));
 }

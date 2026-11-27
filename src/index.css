@@ -411,3 +411,14 @@ nav.abas button.active svg { color: var(--ouro); }
   .conteudo { margin-left: 236px; }
   main { padding-bottom: 48px; }
 }
+
+/* Logos de bancos e programas */
+.logo { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 6px; overflow: hidden; background: #fff; vertical-align: middle; }
+.logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.logo.sigla { font-weight: 700; letter-spacing: -.02em; line-height: 1; font-family: inherit; }
+.com-logo { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.venc-linha .venc-icone .logo { border-radius: 50%; }
+.renda-ir { border-bottom: 1px solid var(--linha); padding: 4px 0 10px; margin-bottom: 8px; }
+.renda-ir > div { display: flex; justify-content: space-between; align-items: baseline; }
+.renda-ir strong { font-size: 1.1rem; }
+.renda-ir p { margin: 4px 0 0; }

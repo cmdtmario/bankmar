@@ -8,6 +8,7 @@ import { carregarPainel, type PainelDados, type Vencimento } from '../lib/painel
 import { pctBR, brl, dataBR, competenciaDe, hojeBrasilia, nomeMes, somaMeses } from '../lib/formato';
 import { Contador, Esqueleto, Mostrador, Sequencia } from '../ui/animacao';
 import { Erro, useAcao } from '../ui/comum';
+import { Logo, marcaDe } from '../ui/Logo';
 import { FormPagamento } from './Mes';
 import { TEMA } from '../ui/tema';
 
@@ -89,7 +90,7 @@ export function Painel() {
               const r = rotuloPrazo(v);
               return (
                 <div className={`venc-linha ${r.classe}`} key={v.tipo + v.id}>
-                  <div className="venc-icone" aria-hidden="true">{v.tipo === 'fatura' ? <CreditCard size={18} /> : <Wallet size={18} />}</div>
+                  <div className="venc-icone" aria-hidden="true">{marcaDe(v.tipo === 'fatura' ? v.nome : v.banco) ? <Logo nome={v.tipo === 'fatura' ? v.nome : v.banco} tamanho={34} /> : v.tipo === 'fatura' ? <CreditCard size={18} /> : <Wallet size={18} />}</div>
                   <div className="grow">
                     <strong>{v.nome}</strong>
                     <div className="sub">{dataBR(v.vencimento).slice(0, 5)} · <span className={`prazo ${r.classe}`}>{r.texto}</span>{v.pago > 0 ? ` · faltam ${brl(v.falta)}` : ''}</div>

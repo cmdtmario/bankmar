@@ -17,7 +17,7 @@ export interface LinhaFatura {
 }
 
 export interface FaturaLida {
-  emissor: 'itau' | 'caixa' | 'texto';
+  emissor: 'itau' | 'caixa' | 'texto' | 'generico';
   final4: string | null;
   vencimento: string | null; // AAAA-MM-DD
   /** Valor impresso que a soma das linhas deve igualar (RF-26). */

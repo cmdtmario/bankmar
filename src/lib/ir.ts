@@ -48,9 +48,9 @@ export const PARAMETROS_PADRAO: Parametros = { isencao_acoes: 20000, aliquota_co
 export interface Mensal {
   competencia: string; recebido_em: string | null; salario_liquido: number | null; ferias_terco: number | null; inss_folha: number | null; inss_ferias: number | null;
   ir_folha: number | null; ir_ferias: number | null; ir_vinculo_unico: number | null; plano_saude: number | null; odontologico: number | null; ensino: number | null;
-  medico_fora: number | null; obs_medico: string | null;
+  medico_fora: number | null; obs_medico: string | null; decimo_terceiro?: number | null;
 }
-export interface Previdencia { competencia: string; plano: string; tipo: 'PGBL' | 'VGBL'; valor: number }
+export interface Previdencia { competencia: string; plano: string; tipo: 'PGBL' | 'VGBL'; valor: number; origem?: 'manual' | 'conta'; bill_id?: string | null }
 
 export function resumoAnual(mensal: Mensal[], prev: Previdencia[], rendaTributavel: number | null, p: Parametros = PARAMETROS_PADRAO) {
   const s = (k: keyof Mensal) => r2(mensal.reduce((a, m) => a + (Number(m[k]) || 0), 0));
@@ -60,11 +60,11 @@ export function resumoAnual(mensal: Mensal[], prev: Previdencia[], rendaTributav
   const inss = r2(s('inss_folha') + s('inss_ferias'));
   const ir = r2(s('ir_folha') + s('ir_ferias') + s('ir_vinculo_unico'));
   // Estimativa de renda tributável quando não informada: líquido + férias + INSS + IR retido (não inclui descontos não tributáveis).
-  const estimada = r2(s('salario_liquido') + s('ferias_terco') + inss + ir);
+  const estimada = r2(s('salario_liquido') + s('decimo_terceiro') + s('ferias_terco') + inss + ir);
   const base = rendaTributavel ?? null;
   const limite = base != null ? r2(base * p.limite_pgbl_pct / 100) : null;
   return {
-    liquido: s('salario_liquido'), ferias: s('ferias_terco'), inss, ir, saude: s('plano_saude'), odonto: s('odontologico'), ensino: s('ensino'), medicoFora: s('medico_fora'),
+    liquido: r2(s('salario_liquido') + s('decimo_terceiro')), ferias: s('ferias_terco'), inss, ir, saude: s('plano_saude'), odonto: s('odontologico'), ensino: s('ensino'), medicoFora: s('medico_fora'),
     pgbl, vgbl, porPlano, rendaEstimada: estimada, limitePgbl: limite, faltaPgbl: limite != null ? r2(limite - pgbl) : null,
   };
 }
@@ -302,3 +302,6 @@ export function lerAbaIrrf(dados: ArrayBuffer | Uint8Array): { mensal: Mensal[];
   }
   return { mensal, previdencia, ano };
 }
+
+/** Mesmo critério do banco: sem acento, maiúsculas e sem a palavra "Previdência". */
+export const normPlano = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\s*previdencia(\s+privada)?\s*[-:]?\s*/i, '').replace(/\s+/g, ' ').trim().toUpperCase();

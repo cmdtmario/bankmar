@@ -10,6 +10,7 @@ import { acessosVip, progressoIsencao, lerAbaCartoes, type Isencao } from '../li
 import { carregarCarteira } from '../lib/investimentos/dados';
 import { brl, dataBR, hojeBrasilia, pctBR } from '../lib/formato';
 import { Carregando, Erro, Modal, numeroDe, useAcao, useCadastros } from '../ui/comum';
+import { Logo } from '../ui/Logo';
 
 const NOME_ISENCAO: Record<Isencao['tipo'], string> = { gasto_mensal: 'Gasto na fatura por mês', gasto_periodo: 'Gasto num período', investido: 'Valor investido', promocional: 'Isenção promocional' };
 
@@ -74,7 +75,7 @@ export function Cartoes() {
               return (
                 <li key={c.id}>
                   <button className="razao-linha" onClick={() => setAberto(c.id)}>
-                    <span className="razao-cod">{c.apelido}{c.final4 && <span className="sub"> · {c.final4}</span>}{r.pendente && <AlertTriangle size={13} className="icone-alerta" aria-label="benefícios mudaram" />}</span>
+                    <span className="razao-cod com-logo"><Logo nome={c.apelido} sempre />{c.apelido}{c.final4 && <span className="sub"> · {c.final4}</span>}{r.pendente && <AlertTriangle size={13} className="icone-alerta" aria-label="benefícios mudaram" />}</span>
                     <span className="razao-valor num sub">{c.dia_vencimento ? `vence dia ${c.dia_vencimento}` : ''}</span>
                     <span className="razao-det">
                       {r.vip ? (r.vip.ilimitado ? 'Sala VIP ilimitada' : `Sala VIP ${r.vip.disponiveis} de ${r.vip.total}`) : 'Sem sala VIP'}
@@ -97,7 +98,7 @@ export function Cartoes() {
                 <ul className="razao cancelados">
                   {cancelados.map((c) => (
                     <li key={c.id}><button className="razao-linha" onClick={() => setAberto(c.id)}>
-                      <span className="razao-cod">{c.apelido}</span><span className="razao-valor num sub">{c.desativado_em ? `desde ${dataBR(c.desativado_em)}` : 'cancelado'}</span>
+                      <span className="razao-cod com-logo"><Logo nome={c.apelido} sempre />{c.apelido}</span><span className="razao-valor num sub">{c.desativado_em ? `desde ${dataBR(c.desativado_em)}` : 'cancelado'}</span>
                     </button></li>
                   ))}
                 </ul>
@@ -261,7 +262,7 @@ function EditarCartao({ c, contas, hoje, onFechar, onSalvo }: { c: Partial<Carta
       <p className="sub" style={{ marginTop: 0 }}>Só os 4 últimos dígitos. Número completo, validade e código nunca são pedidos nem guardados.</p>
       <div className="campos">
         <label>Apelido<input value={k.apelido ?? ''} onChange={(e) => set('apelido', e.target.value)} /></label>
-        <label>Leitor de fatura<select value={k.emissor ?? 'outro'} onChange={(e) => set('emissor', e.target.value)}><option value="itau">Itaú</option><option value="caixa">Caixa</option><option value="outro">Outro (colar texto)</option></select></label>
+        <label>Leitor de fatura<select value={k.emissor ?? 'outro'} onChange={(e) => set('emissor', e.target.value)}><option value="itau">Itaú</option><option value="caixa">Caixa</option><option value="outro">Outros bancos (leitor automático genérico)</option></select></label>
         <label>Bandeira<input value={k.bandeira ?? ''} onChange={(e) => set('bandeira', e.target.value)} /></label>
         <label>Final (4 dígitos)<input inputMode="numeric" maxLength={4} value={k.final4 ?? ''} onChange={(e) => set('final4', e.target.value.replace(/\D/g, '').slice(0, 4))} /></label>
         <label>Dia do vencimento<input type="number" min={1} max={31} value={k.dia_vencimento ?? ''} onChange={(e) => set('dia_vencimento', e.target.value ? Number(e.target.value) : null)} /></label>

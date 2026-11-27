@@ -237,4 +237,25 @@ end $$;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000b","aal":"aal2"}', false);
 select pg_temp.ok((select count(*) from ir_mensal) = 0 and (select count(*) from ir_config) = 0, 'IR de outro usuário não aparece');
 reset role;
+
+-- Integração Mês ↔ IR
+set role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","aal":"aal2"}', false);
+insert into ir_mensal (competencia, recebido_em, salario_liquido, ferias_terco) values ('2026-10-01', '2026-11-06', 17971.33, 13135.76);
+insert into ir_mensal (competencia, salario_liquido) values ('2026-11-01', 18000);
+insert into ir_mensal (competencia, recebido_em, decimo_terceiro) values ('2026-12-01', '2026-12-19', 9000);
+select pg_temp.ok((select renda from months where competencia = '2026-11-01') = 31107.09, 'renda de novembro = líquido + férias da folha recebida em novembro');
+select pg_temp.ok((select renda from months where competencia = '2026-12-01') = 27000, 'renda de dezembro soma a folha de novembro e o 13º');
+update ir_mensal set salario_liquido = 17000 where competencia = '2026-10-01';
+select pg_temp.ok((select renda from months where competencia = '2026-11-01') = 30135.76, 'corrigir o IR corrige a renda do mês');
+insert into bills (id, competencia, descricao, vencimento, valor) values ('70000000-0000-0000-0000-000000000001', '2026-10-01', 'Previdencia ITAÚ', '2026-10-10', 519.06);
+select pg_temp.ok((select valor from ir_previdencia where competencia = '2026-10-01' and plano = 'ITAU') = 519.06 and (select origem from ir_previdencia where plano = 'ITAU') = 'conta', 'conta de previdência vira contribuição no IR');
+update bills set valor = 600 where id = '70000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select valor from ir_previdencia where plano = 'ITAU') = 600, 'mudar o valor da conta muda o IR');
+insert into ir_previdencia (competencia, plano, valor) values ('2026-11-01', 'PORTO', 300) on conflict (user_id, competencia, plano) do nothing;
+insert into bills (competencia, descricao, vencimento, valor) values ('2026-11-01', 'Previdência Porto', '2026-11-10', 313.92);
+select pg_temp.ok((select count(*) from ir_previdencia where competencia = '2026-11-01' and plano = 'PORTO') = 1 and (select valor from ir_previdencia where competencia = '2026-11-01' and plano = 'PORTO') = 313.92, 'conta substitui o lançamento manual do mesmo plano, sem duplicar');
+delete from bills where id = '70000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select count(*) from ir_previdencia where plano = 'ITAU') = 0, 'excluir a conta tira a contribuição do IR');
+reset role;
 select 'TODOS OS TESTES SQL PASSARAM' as resultado;

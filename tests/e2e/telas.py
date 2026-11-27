@@ -207,6 +207,9 @@ def main():
         for nome_tam, (w, h) in TAMANHOS.items():
             ctx = nav.new_context(viewport={"width": w, "height": h}, reduced_motion="reduce", locale="pt-BR", timezone_id="America/Sao_Paulo")
             ctx.route("https://demo.supabase.co/**", responder)
+            # logos dos bancos vêm do site de cada instituição; no teste (sem internet) entra um quadrado neutro
+            ctx.route(re.compile(r"^https://(?!demo\.supabase\.co).*/(apple-touch-icon\.png|favicon\.ico)$"),
+                      lambda r: r.fulfill(status=200, content_type="image/svg+xml", body='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="6" fill="#8a7d66"/></svg>'))
             # login sem sessão
             pg = ctx.new_page()
             atual = {"tela": "login"}
