@@ -157,3 +157,55 @@ Abreviação usada nos caminhos: `M` = `supabase/migrations/20261125000000_entre
 ## Pendências
 - Publicar a função `investimentos-diario` e criar o agendamento (`supabase/agendamento.sql`, 2º bloco).
 - Tela de equivalência de instituições (RF-60d).
+
+---
+
+# Relatório de implementação — Entregas 2 (Cartões, Milhas) e 4 (Imposto de Renda)
+
+**Spec:** specs/financas-pessoais.md · **Data:** 2026-11-27 · **Branch:** dev (não publicada)
+
+## Requisitos atendidos
+
+| ID | Requisito (resumo) | Status | Onde | Como verificar |
+|----|--------------------|--------|------|----------------|
+| RF-44 | Cadastrar, desativar e reativar cartão; desativado some do dia a dia e dos avisos | Atendido | `paginas/Cartoes.tsx`, `lib/painel.ts`, `functions/avisos-vencimento` | e2e: "Cartão Antigo" não aparece na lista; aparece em "Ver cartões cancelados" |
+| RF-45 | Cadastro completo do cartão | Atendido | migração `20261127000000_cartoes_milhas.sql`, `EditarCartao` | Cartões → + Cartão |
+| RF-46 | Regras de isenção com progresso pelas faturas | Atendido | `lib/cartoes.ts:progressoIsencao` | `cartoes.test.ts` (gasto mensal, período, investido, promocional) |
+| RF-47 | Sala VIP com "usei" e renovação | Atendido | `lib/cartoes.ts:acessosVip`, detalhe do cartão | `cartoes.test.ts`; e2e mostra "3 de 4" |
+| RF-48 | Checagem mensal da página de benefícios com aprovação | Atendido | `functions/beneficios-mensal`, `decidirBeneficio` | e2e mostra o trecho alterado; aprovar/ignorar no detalhe |
+| RF-49 | Página ilegível → "não verificado neste mês" | Atendido | `beneficios-mensal/index.ts:lerPagina` | status `nao_verificado` mantém os dados |
+| RF-50 | Programas e contas por titular | Atendido | `mil_programas`, `mil_contas` | Milhas → Resumo; contas de terceiros separadas |
+| RF-51 | Entradas com origem | Atendido | `mil_movimentos`, `NovoMovimento` | Milhas → Movimentos → + Movimento |
+| RF-52 | Pontos de cartão previstos × confirmados | Atendido | `Milhas.tsx:ConfirmarPontos`, `pontosPrevistos` | Resumo → "Pontos de cartão a confirmar" |
+| RF-53 | Transferência com bônus levando o custo | Atendido | `lib/milhas.ts:transferencia`, `Transferir` | `milhas.test.ts` |
+| RF-54 | Custos e custo médio do milheiro | Atendido | view `mil_saldos`, `cashbackRenunciado` | teste SQL "custo do milheiro" |
+| RF-55 | Vendas com lucro pelo custo médio | Atendido | `mil_vendas`, `lucroVenda` | Milhas → Vendas |
+| RF-56 | Limite de CPFs por programa (só contagem) | Atendido | `cpfsUsados`, `EditarPrograma` | `milhas.test.ts`; Resumo mostra "4 de 25" |
+| RF-57 | Emissões | Atendido | `mil_emissoes`, `NovaEmissao` | Milhas → Emissões |
+| RF-58 | Visão consolidada, Mário × terceiros | Atendido | `Milhas.tsx:Resumo` | e2e |
+| RF-81 | Aviso de mudança de benefício | Atendido | `beneficios-mensal/index.ts:avisar` | push + e-mail, uma vez por mês por cartão |
+| RF-91 | Importar aba CARTÕES sem número/validade/código | Atendido | `lib/cartoes.ts:lerAbaCartoes` | `cartoes.test.ts` confere que nenhum valor das colunas O–Q aparece |
+| RF-92 | Importar Controle de Milhas sem a aba de CPFs | Atendido (com desvios) | `lib/milhas.ts:lerControleMilhas` | `milhas.test.ts`: saldos de Smiles, TudoAzul, Smiles Diego e Copa iguais aos da planilha |
+| RF-75 | Valores mensais da folha e previdência | Atendido | `ir_mensal`, `ir_previdencia`, aba "Mês a mês" | e2e |
+| RF-76 | PGBL × 12% da renda tributável | Atendido | `lib/ir.ts:resumoAnual` | `ir.test.ts` |
+| RF-77 | Proventos do ano por tipo e CNPJ | Atendido | `montarRelatorio` (itens `rend:`) | `ir.test.ts`: total do relatório = soma da Movimentação de 2025 |
+| RF-78 | Relatório por ficha com código, CNPJ, discriminação e custo em 31/12 | Atendido | `montarRelatorio` | `ir.test.ts`; aba Relatório |
+| RF-78a | Códigos configuráveis por ano, "classificar" quando sem código | Atendido | `ir_config`, aba Configurar | aviso até marcar como revisado |
+| RF-78b | Exportar PDF e planilha; copiar no celular | Atendido | `dadosIr.ts:exportarPdfIr/exportarPlanilhaIr`, `Copiar` | e2e copia o CNPJ e confere a área de transferência |
+| RF-78c | Renda variável mês a mês | Atendido | `lib/ir.ts:rendaVariavel` | `ir.test.ts` (isenção, compensação, day trade, FII, DARF mínimo) |
+| RF-78d | Conferência com a pré-preenchida | Atendido | `ir_conferencia`, `Conferir` | Relatório → "Conferir" |
+| RF-93 | Importar aba IRRF 2026 | Atendido | `lib/ir.ts:lerAbaIrrf` | `ir.test.ts`: totais iguais à linha TOTAL da planilha |
+
+## Desvios e decisões
+- RF-47: o "Utilizado" da aba CARTÕES vira usos com a data da importação (a planilha não tem as datas). Só entra se o cartão ainda não tem usos.
+- RF-48: a primeira leitura de cada página vira a versão de referência. "Aceitar" troca a referência; o cadastro do cartão só muda se você editar.
+- RF-52: os pontos previstos usam só a pontuação nacional; a fatura não separa compras internacionais.
+- RF-55/RF-92: as observações das vendas não são importadas (têm telefones e perfis de compradores).
+- RF-92: a planilha tem diferenças próprias: o saldo da Latam Pass difere em 5 milhas entre a aba do programa e a aba de vendas, e várias colunas "Total" de custo não somam todos os meses. O BankMaR soma mês a mês e mostra as duas colunas na conferência. As abas ALL ACCOR, CONTROLE_PONTOS_ACUM e as calculadoras não são importadas.
+- RF-78: renda fixa, Tesouro e COE vêm com o valor aplicado da posição atual; o saldo de 31/12 do ano anterior precisa vir da declaração passada (a B3 não guarda). Os códigos padrão (inclusive FII isento 26 e odontológico) precisam de revisão contra o manual do IRPF 2027.
+- RF-78c: não considera corretagem nem o IR de 0,005% retido na fonte. Prejuízo em mês isento continua compensável.
+- Correção: fundos imobiliários com "FDO INV IMOB" no nome eram classificados como "fundo"; agora são FII.
+
+## Pendências para o revisor
+- Revisar a tabela de códigos de 2026 em Imposto de Renda → Configurar.
+- Publicar as funções `beneficios-mensal` e `investimentos-diario` e rodar o agendamento.

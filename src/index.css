@@ -360,3 +360,24 @@ input[type="file"]::file-selector-button { background: var(--card); color: var(-
 .campo-largo { grid-column: 1 / -1; }
 .razao-tabela thead th:not([aria-sort]) { padding: 8px 6px; font-size: .78rem; white-space: nowrap; }
 @media (max-width: 600px) { .razao-tabela th, .razao-tabela td { padding-left: 4px; padding-right: 4px; font-size: .84rem; } }
+
+/* Imposto de Renda */
+.itens-ir { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--linha-forte); }
+.item-ir { padding: 12px 2px; border-bottom: 1px solid var(--linha); }
+.codigo-ir { font-weight: 600; font-variant-numeric: tabular-nums; }
+.campo-ir { margin-top: 8px; }
+.campo-ir p { margin: 2px 0 4px; line-height: 1.5; }
+.campo-ir.em-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.campo-ir.em-linha .sub { min-width: 80px; }
+.valores-ir { display: flex; flex-wrap: wrap; gap: 0 24px; }
+.copiar { border: 1px solid var(--linha-forte); background: none; color: var(--sub); min-height: 36px; padding: 0 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; }
+.copiar:hover { color: var(--txt); }
+.situacao-ir { border: 0; background: none; color: var(--ouro-claro); min-height: 36px; padding: 0 4px; font-size: .85rem; }
+.situacao-ir.conferido { color: var(--ganho); } .situacao-ir.divergente { color: var(--perda); } .situacao-ir.nao_veio { color: var(--alerta); }
+.rv-detalhe { padding: 4px 2px 12px; }
+input.mini { width: 56px; text-align: center; min-height: 36px; }
+.tabela-codigos { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--linha-forte); }
+.tabela-codigos li { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--linha); }
+.tabela-codigos .grow { flex: 1 1 0; min-width: 0; font-size: .9rem; }
+.tabela-codigos .nome-ativo { display: block; }
+.mini-campo { flex-direction: column; align-items: center; gap: 2px; font-size: .72rem; color: var(--sub); }

@@ -122,12 +122,14 @@ _POS = [("PETR4", "acao", "Petrobras PN", 120, 38.1, "INTER DTVM"), ("PETR4", "a
         ("HGLG11", "fii", "CSHG Logística FII", 40, 158.4, "INTER DTVM"), ("MXRF11", "fii", "Maxi Renda FII", 900, 9.6, "XP INVESTIMENTOS"),
         ("BOVA11", "etf", "iShares Ibovespa", 30, 128.0, "NU INVEST"), ("WEGE3", "acao", "WEG ON", 60, 52.3, "C6 CTVM")]
 DADOS.update({
-    "inv_posicoes": [{"id": i, "data_ref": HOJE.isoformat(), "classe": c, "codigo": k, "produto": n, "instituicao": inst, "cnpj": None, "isin": None, "emissor": None,
+    "inv_posicoes": [{"id": i, "data_ref": HOJE.isoformat(), "classe": c, "codigo": k, "produto": f"{k} - {n}", "instituicao": inst, "cnpj": "33000167000101" if k == "PETR4" else None, "isin": None, "emissor": None,
                       "indexador": None, "vencimento": None, "quantidade": q, "preco": pr, "valor": q * pr, "valor_aplicado": None} for i, (k, c, n, q, pr, inst) in enumerate(_POS)]
                     + [{"id": 99, "data_ref": HOJE.isoformat(), "classe": "renda_fixa", "codigo": "CDB-BANCO-X", "produto": "CDB Banco X 110% CDI", "instituicao": "INTER DTVM",
                         "cnpj": None, "isin": None, "emissor": "Banco X", "indexador": "CDI", "vencimento": "2028-05-10", "quantidade": 10, "preco": 1180.5, "valor": 11805, "valor_aplicado": 10000}],
     "inv_negociacoes": [{"id": i, "data": f"2024-0{1 + i % 8}-10", "tipo": "Compra", "mercado": "Mercado à Vista", "instituicao": inst, "codigo": k, "quantidade": q, "preco": pr * 0.85,
-                         "valor": q * pr * 0.85, "chave": f"n{i}"} for i, (k, c, n, q, pr, inst) in enumerate(_POS) if k != "WEGE3" and not (k == "PETR4" and "NU" in inst)] + [{"id": 50, "data": "2024-03-10", "tipo": "Compra", "mercado": "Mercado à Vista", "instituicao": "NU INVEST", "codigo": "PETR4", "quantidade": 80, "preco": 33.0, "valor": 2640.0, "chave": "n50"}],
+                         "valor": q * pr * 0.85, "chave": f"n{i}"} for i, (k, c, n, q, pr, inst) in enumerate(_POS) if k != "WEGE3" and not (k == "PETR4" and "NU" in inst)] + [{"id": 50, "data": "2024-03-10", "tipo": "Compra", "mercado": "Mercado à Vista", "instituicao": "NU INVEST", "codigo": "PETR4", "quantidade": 80, "preco": 33.0, "valor": 2640.0, "chave": "n50"},
+                         {"id": 51, "data": f"{HOJE.year}-03-15", "tipo": "Venda", "mercado": "Mercado à Vista", "instituicao": "NU INVEST", "codigo": "ITSA4", "quantidade": 100, "preco": 11.5, "valor": 1150.0, "chave": "n51"},
+                         {"id": 52, "data": f"{HOJE.year}-03-15", "tipo": "Compra", "mercado": "Mercado à Vista", "instituicao": "NU INVEST", "codigo": "ITSA4", "quantidade": 100, "preco": 9.52, "valor": 952.0, "chave": "n52"}],
     "inv_movimentacoes": [{"id": 100 + j, "data": f"{2025 + j // 12}-{1 + j % 12:02d}-15", "entrada": True, "tipo": "Rendimento" if k.endswith("11") else "Dividendo", "produto": k, "codigo": k,
                            "instituicao": "INTER DTVM", "quantidade": None, "preco": None, "valor": v, "chave": f"m{j}{k}"}
                           for j in range(23) for k, v in [("HGLG11", 44.0), ("MXRF11", 90.0)] + ([("PETR4", 140.0)] if j % 3 == 0 else [])],
@@ -135,6 +137,12 @@ DADOS.update({
                               {"id": 2, "codigo": "PETR4", "produto": "PETR4", "tipo": "Dividendo", "evento": "DIVIDENDO", "previsao": (HOJE + timedelta(days=18)).isoformat(), "instituicao": "INTER", "quantidade": 200, "valor": 128.4}],
     "inv_ajustes": [{"codigo": "HGLG11", "preco_medio": None, "preco_alvo": 175, "origem": None, "observacao": None}],
     "inv_instituicoes": [],
+    "ir_mensal": [{"id": f"ir{i}", "competencia": f"{HOJE.year}-{i:02d}-01", "recebido_em": None, "salario_liquido": 12000.0, "ferias_terco": 6000.0 if i == 10 else None,
+                   "inss_folha": 900.0, "inss_ferias": None, "ir_folha": 2800.0, "ir_ferias": 900.0 if i == 10 else None, "ir_vinculo_unico": None, "plano_saude": 210.0 if i % 4 == 0 else None,
+                   "odontologico": None, "ensino": None, "medico_fora": 350.0 if i == 5 else None, "obs_medico": "Consulta dermatologista" if i == 5 else None} for i in range(1, 11)],
+    "ir_previdencia": [{"id": f"pv{i}", "competencia": f"{HOJE.year}-{i:02d}-01", "plano": "Plano Exemplo", "tipo": "PGBL", "valor": 800.0} for i in range(1, 11)],
+    "ir_config": [{"ano": HOJE.year, "renda_tributavel": 210000.0, "codigos": {}, "parametros": {}, "revisado_em": None}],
+    "ir_conferencia": [{"item": "bem:PETR4", "situacao": "conferido", "observacao": None}],
     "inv_saldos_manuais": [{"id": "s1", "instituicao": "Previdência Exemplo", "produto": "PGBL Exemplo", "classe": "previdencia", "competencia": COMP.isoformat(), "saldo": 42000, "aportes": 500}],
     "inv_fotos": [{"competencia": mes(HOJE, -i).isoformat(), "valor": 118000 - i * 2100} for i in range(1, 9)],
 })
@@ -188,7 +196,7 @@ def responder(route):
     return route.fulfill(status=200, content_type="application/json", body=json.dumps(linhas))
 
 
-TELAS = ["/", "/mes", "/faturas", "/contas", "/pessoas", "/pessoas/p1", "/categorias", "/mais", "/investimentos", "/cartoes", "/milhas"]
+TELAS = ["/", "/mes", "/faturas", "/contas", "/pessoas", "/pessoas/p1", "/categorias", "/mais", "/investimentos", "/cartoes", "/milhas", "/ir"]
 TAMANHOS = {"celular": (375, 812), "deitado": (812, 375), "tablet": (768, 1024), "desktop": (1280, 900)}
 
 
@@ -284,6 +292,20 @@ def main():
                 assert not pg.locator(".erro").count(), f"milhas {aba}: erro na tela"
                 assert pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), f"milhas {aba}: rolagem horizontal em {nome_tam}"
                 pg.screenshot(path=str(SAIDA / f"{nome_tam}-5{n}-milhas-{aba.lower()}.png"), full_page=True)
+            # imposto de renda: abas e botão de copiar
+            pg.goto(BASE + "/ir")
+            pg.wait_for_load_state("networkidle")
+            assert pg.get_by_text("Código 01").first.is_visible(), "bens com código"
+            if nome_tam == "desktop":
+                ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=BASE)
+                pg.get_by_role("button", name="Copiar CNPJ").first.click()
+                assert pg.evaluate("navigator.clipboard.readText()") == "33.000.167/0001-01", "copiar CNPJ não copiou"
+            for n, aba in enumerate(["Resumo", "Mês a mês", "Renda variável", "Configurar"], 1):
+                pg.get_by_role("tab", name=aba).click()
+                pg.wait_for_timeout(300)
+                assert not pg.locator(".erro").count(), f"IR {aba}: erro na tela"
+                assert pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), f"IR {aba}: rolagem horizontal em {nome_tam}"
+                pg.screenshot(path=str(SAIDA / f"{nome_tam}-6{n}-ir-{n}.png"), full_page=True)
             # link público
             pg2 = nav.new_context(viewport={"width": w, "height": h}, reduced_motion="reduce").new_page()
             pg2.context.route("https://demo.supabase.co/**", responder)

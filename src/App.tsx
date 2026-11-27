@@ -14,6 +14,7 @@ const Mais = lazy(() => import('./paginas/Mais').then((m) => ({ default: m.Mais 
 const Compartilhado = lazy(() => import('./paginas/Compartilhado').then((m) => ({ default: m.Compartilhado })));
 const Cartoes = lazy(() => import('./paginas/Cartoes').then((m) => ({ default: m.Cartoes })));
 const Milhas = lazy(() => import('./paginas/Milhas').then((m) => ({ default: m.Milhas })));
+const ImpostoRenda = lazy(() => import('./paginas/ImpostoRenda').then((m) => ({ default: m.ImpostoRenda })));
 const Investimentos = lazy(() => import('./paginas/Investimentos').then((m) => ({ default: m.Investimentos })));
 const Pessoas = lazy(() => import('./paginas/Pessoas').then((m) => ({ default: m.Pessoas })));
 const PessoaDetalhe = lazy(() => import('./paginas/Pessoas').then((m) => ({ default: m.PessoaDetalhe })));
@@ -65,6 +66,7 @@ function Area() {
             <Route path="/investimentos" element={<Investimentos />} />
             <Route path="/cartoes" element={<Cartoes />} />
             <Route path="/milhas" element={<Milhas />} />
+            <Route path="/ir" element={<ImpostoRenda />} />
             <Route path="/mais" element={<Mais />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -2,7 +2,7 @@
 // importação da planilha 2026 (RF-90/94) e histórico de importações (RNF-04).
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, CreditCard, PieChart, Plane, Receipt } from 'lucide-react';
+import { ChevronRight, CreditCard, Landmark, PieChart, Plane, Receipt } from 'lucide-react';
 import { supabase, ok } from '../lib/supabase';
 import { importarPlanilha2026, totaisDoMes, PESSOA_A_REVISAR, type ResultadoImportacao } from '../lib/importacao/planilha2026';
 import { sugerirCategoria, type RegraCategoria } from '../lib/regras';
@@ -35,6 +35,7 @@ export function Mais() {
         <Link to="/contas" className="card atalho"><Receipt size={22} aria-hidden="true" /><span className="grow"><strong>Contas</strong><span className="sub">Recorrentes, avulsas e boletos</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
         <Link to="/cartoes" className="card atalho"><CreditCard size={22} aria-hidden="true" /><span className="grow"><strong>Cartões</strong><span className="sub">Isenção, sala VIP, pontos e benefícios</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
         <Link to="/milhas" className="card atalho"><Plane size={22} aria-hidden="true" /><span className="grow"><strong>Milhas e pontos</strong><span className="sub">Saldos, custo do milheiro, vendas e emissões</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
+        <Link to="/ir" className="card atalho"><Landmark size={22} aria-hidden="true" /><span className="grow"><strong>Imposto de Renda</strong><span className="sub">Relatório por ficha, PGBL e renda variável</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
         <Link to="/categorias" className="card atalho"><PieChart size={22} aria-hidden="true" /><span className="grow"><strong>Gastos por categoria</strong><span className="sub">Rosca, 12 meses e regras</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
       </div>
       {msg && <div className="okmsg">{msg}</div>}
@@ -55,7 +56,7 @@ export function Mais() {
 
       <h2>Importar planilha 2026</h2>
       <div className="card">
-        <p className="sub">Arquivo “Contabilidade BanKMar - 2026.xlsx”. A leitura acontece no seu navegador; as abas COFRE, CARTÕES, IRRF e CHURRAS não são importadas.</p>
+        <p className="sub">Arquivo “Contabilidade BanKMar - 2026.xlsx”. A leitura acontece no seu navegador; as abas COFRE e CHURRAS não são importadas; CARTÕES e IRRF são importadas em Cartões e em Imposto de Renda.</p>
         <input type="file" accept=".xlsx" onChange={(e) => {
           const f = e.target.files?.[0];
           e.target.value = '';

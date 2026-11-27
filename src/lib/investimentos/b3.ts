@@ -110,7 +110,7 @@ export function lerArquivoB3(dados: ArrayBuffer | Uint8Array): ArquivoB3 {
         const q = n(r['Quantidade']);
         if (!produto || q == null) { ignoradas++; continue; }
         const codigo = codigoBase(s(r['Código de Negociação']) || s(r['Código']) || s(r['Código ISIN']) || produto);
-        const ehFii = classe === 'fii' && /FII|IMOBILI|FIAGRO|INFRA/i.test(produto);
+        const ehFii = classe === 'fii' && /FII|IMOB|FIAGRO|AGRO|INFRA/i.test(produto);
         linhas.push({
           classe: classe === 'fii' && !ehFii ? 'fundo' : classe,
           codigo, produto,

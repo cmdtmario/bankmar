@@ -221,4 +221,20 @@ select pg_temp.ok((select count(*) from mil_saldos) = 0 and (select count(*) fro
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","aal":"aal1"}', false);
 select pg_temp.ok((select count(*) from mil_movimentos) = 0, 'sem a segunda etapa de login, milhas ficam fechadas');
 reset role;
+
+-- Entrega 4: imposto de renda
+set role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","aal":"aal2"}', false);
+insert into ir_mensal (competencia, salario_liquido, ir_folha) values ('2026-01-01', 15000, 3000);
+insert into ir_previdencia (competencia, plano, valor) values ('2026-01-01', 'Porto', 300);
+insert into ir_config (ano, renda_tributavel, parametros) values (2026, 250000, '{"isencao_acoes": 20000}');
+insert into ir_conferencia (ano, item, situacao) values (2026, 'bens:PETR4', 'conferido');
+select pg_temp.ok((select count(*) from audit_log where tabela in ('ir_mensal','ir_previdencia','ir_config','ir_conferencia')) = 4, 'lançamentos do IR são auditados');
+do $$ begin
+  begin insert into ir_mensal (competencia) values ('2026-01-15'); raise exception 'FALHOU: competência fora do dia 1';
+  exception when check_violation then raise notice 'ok - competência do IR é sempre dia 1'; end;
+end $$;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000b","aal":"aal2"}', false);
+select pg_temp.ok((select count(*) from ir_mensal) = 0 and (select count(*) from ir_config) = 0, 'IR de outro usuário não aparece');
+reset role;
 select 'TODOS OS TESTES SQL PASSARAM' as resultado;

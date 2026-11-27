@@ -38,13 +38,17 @@ Em seguida, use **Deploys → Trigger deploy**.
 2. Em **Supabase → Edge Functions → Secrets**, crie:
    `CRON_SECRET` (qualquer texto longo e aleatório), `RESEND_API_KEY`, `AVISO_REMETENTE` (`BanKMar <onboarding@resend.dev>`),
    `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT` (`mailto:seu-email`).
-3. No **SQL Editor**, rode `supabase/agendamento.sql` trocando o ID do projeto e o `CRON_SECRET`.
-4. No app, em **Mais**, salve seu e-mail e toque em **Ativar notificações neste aparelho**.
+3. Publique as funções `avisos-vencimento`, `investimentos-diario` e `beneficios-mensal` (pelo GitHub Actions, depois de criar os secrets `SUPABASE_ACCESS_TOKEN` e `SUPABASE_PROJECT_REF` no repositório, ou pelo `supabase functions deploy`).
+4. No **SQL Editor**, rode `supabase/agendamento.sql` trocando o ID do projeto e o `CRON_SECRET`. Ele agenda os avisos (8h), as cotações (18h30 dos dias úteis) e a checagem de benefícios (dia 1, 9h).
+5. No app, em **Mais**, salve seu e-mail e toque em **Ativar notificações neste aparelho**.
 
 ### 5. Primeiro acesso
 1. Entre com e-mail e senha e leia o QR code no seu app autenticador.
 2. Em **Mais → Importar planilha 2026**, envie a planilha, confira os totais e grave.
-3. Em **Mais → Cartões**, complete o final e o dia de vencimento de cada cartão e escolha o leitor (Itaú, Caixa ou Outro).
+3. Em **Mais → Cartões → Importar da planilha**, envie a mesma planilha (aba CARTÕES). Depois complete o final e o dia de vencimento de cada cartão.
+4. Em **Investir → Importar**, envie os arquivos da B3 (Negociação, Movimentação, Posição, Proventos a receber).
+5. Em **Mais → Milhas e pontos → Importar**, envie o Controle_Milhas.xlsx.
+6. Em **Mais → Imposto de Renda → Configurar**, importe a aba IRRF e revise os códigos das fichas.
 
 ## Fluxo de publicação (economiza créditos do Netlify)
 - Todo desenvolvimento vai para a branch **`dev`**. O Netlify publica só a `main`, então nada em `dev` gasta deploy.
