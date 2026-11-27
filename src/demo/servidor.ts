@@ -1,6 +1,7 @@
 // Modo demonstração: responde às chamadas do Supabase com dados fictícios, sem rede e sem conta.
 // Usado só no arquivo de demonstração (npm run build:demo). Nunca entra no site publicado.
-import dados from './dados.json';
+// dados.json é gerado na hora (npm run build:demo) e não fica no repositório.
+const dados = Object.values(import.meta.glob('./dados.json', { eager: true, import: 'default' }))[0] as { tabelas: Record<string, unknown[]>; vivo: unknown; usuario: { id: string } & Record<string, unknown> };
 import { memoriaDemo } from '../lib/supabase';
 
 type Linha = Record<string, unknown>;
