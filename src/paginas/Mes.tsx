@@ -1,4 +1,7 @@
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Plus, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FormConta } from './Contas';
+import { supabase, ok } from '../lib/supabase';
 // RF-12, RF-13, RF-14, RF-16: tela "Mês" (equivalente à aba mensal da planilha).
 import { useEffect, useState } from 'react';
 import { dadosDoMes, salvarRenda, adicionarPagamento, removerPagamento, type Conta, type FaturaResumo, type PagamentoDb } from '../lib/dados';
@@ -15,6 +18,8 @@ export function Mes() {
   const [renda, setRenda] = useState('');
   const [pagando, setPagando] = useState<Item | null>(null);
   const [detalhe, setDetalhe] = useState<string | null>(null);
+  const [editando, setEditando] = useState<Partial<Conta> | null>(null);
+  const [rapido, setRapido] = useState<{ valor: string; vencimento: string } | null>(null);
   const { erro, rodar } = useAcao();
   const hoje = hojeBrasilia();
 
@@ -47,6 +52,7 @@ export function Mes() {
         <h1>{nomeMes(comp)}</h1>
         <button onClick={() => setComp(somaMeses(comp, 1))} aria-label="Próximo mês" className="icone"><ChevronRight size={20} /></button>
       </div>
+      <div className="barra-ferramentas"><button onClick={() => setEditando({ competencia: comp, descricao: '', valor: 0, split_rule: { tipo: 'mario' }, origem: 'manual' } as Partial<Conta>)}><Plus size={16} aria-hidden="true" /> Conta avulsa ou boleto</button></div>
       <Erro msg={erro} />
       {!dados ? <Carregando /> : (
         <>
@@ -83,14 +89,38 @@ export function Mes() {
           </ul>
         </>
       )}
-      {aberto && !pagando && (
-        <Modal titulo={aberto.nome} onFechar={() => setDetalhe(null)}>
+      {aberto && !pagando && !editando && (
+        <Modal titulo={aberto.nome} onFechar={() => { setDetalhe(null); setRapido(null); }}>
+          {rapido ? (
+            <div className="campos">
+              <label>Valor deste mês<input inputMode="decimal" autoFocus value={rapido.valor} onChange={(e) => setRapido({ ...rapido, valor: e.target.value })} /></label>
+              <label>Vencimento<input type="date" value={rapido.vencimento} onChange={(e) => setRapido({ ...rapido, vencimento: e.target.value })} /></label>
+              <div className="linha campo-largo">
+                <button className="pri" onClick={() => rodar(async () => {
+                  const v = numeroDe(rapido.valor);
+                  if (v == null) throw new Error('Informe o valor.');
+                  ok(await supabase.from('bills').update({ valor: v, vencimento: rapido.vencimento || null }).eq('id', aberto.id));
+                  setRapido(null); await carregar();
+                })}>Salvar</button>
+                <button onClick={() => setRapido(null)}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
           <dl className="inspetor-numeros">
             <div><dt>Valor</dt><dd>{brl(aberto.valor)}</dd></div>
             <div><dt>Vencimento</dt><dd>{dataBR(aberto.vencimento)}</dd></div>
             <div><dt>Sua parte</dt><dd>{brl(aberto.mario)}{rendaNum ? ` (${pctBR(aberto.mario / rendaNum, 2)} da renda)` : ''}</dd></div>
             {aberto.banco && <div><dt>Banco de pagamento</dt><dd>{aberto.banco}</dd></div>}
           </dl>
+          )}
+          {!rapido && (aberto.tipo === 'conta' ? (
+            <div className="acoes-fatura" style={{ marginTop: 0 }}>
+              <button className="destaque-acao" onClick={() => setRapido({ valor: aberto.valor.toFixed(2).replace('.', ','), vencimento: aberto.vencimento ?? '' })}><Pencil size={14} aria-hidden="true" /> Alterar valor ou vencimento</button>
+              <button onClick={() => { const k = dados?.contas.find((x) => x.id === aberto.id); if (k) setEditando(k); }}>Divisão, categoria e mais</button>
+            </div>
+          ) : (
+            <div className="acoes-fatura" style={{ marginTop: 0 }}><Link to="/faturas" className="link-acao" style={{ paddingLeft: 8 }}>O valor vem dos lançamentos: ver em Faturas</Link></div>
+          ))}
           {aberto.obs && <p className="sub">{aberto.obs}</p>}
           {aberto.extra && <p className="alerta-txt">{aberto.extra}. Confira em Faturas.</p>}
           <h3 className="inspetor-sec">Pagamentos</h3>
@@ -107,6 +137,7 @@ export function Mes() {
           {aberto.pagamentos.length < 2 && <button className="pri" onClick={() => setPagando(aberto)}>Registrar pagamento</button>}
         </Modal>
       )}
+      {editando && <FormConta k={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); setDetalhe(null); carregar(); }} />}
       {pagando && <FormPagamento item={pagando} hoje={hoje} onFechar={() => setPagando(null)} onSalvo={() => { setPagando(null); carregar(); }} />}
     </main>
   );

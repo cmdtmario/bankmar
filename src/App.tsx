@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter, HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
-import { CalendarDays, CreditCard, Home, KeyRound, LineChart, LogOut, Menu, Users } from 'lucide-react';
+import { KeyRound, LogOut, Menu } from 'lucide-react';
+import { BarraInferior, Gaveta, MenuLateral, ROTAS_BARRA } from './ui/Navegacao';
 import { Painel } from './paginas/Painel';
 import { supabase, configurado } from './lib/supabase';
 import { semearSeVazio } from './lib/dados';
@@ -29,6 +30,7 @@ export const URL_COFRE = 'https://vault.bitwarden.com/';
 function Area() {
   const [estado, setEstado] = useState<'verificando' | 'fora' | 'dentro'>('verificando');
   const loc = useLocation();
+  const [menu, setMenu] = useState(false);
   useEffect(() => {
     const checar = async () => {
       const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -46,12 +48,16 @@ function Area() {
     <CadastrosProvider>
       {import.meta.env.VITE_DEMO && <div className="faixa-demo">Demonstração com dados fictícios · nada é salvo</div>}
       <header className="topo">
+        <button className="icone so-gaveta" onClick={() => setMenu(true)} aria-label="Abrir menu" aria-haspopup="dialog" aria-expanded={menu}><Menu size={20} /></button>
         <div className="marca"><img src={`${import.meta.env.BASE_URL}monograma.png`} alt="" /><span>BankMaR</span></div>
         <div className="linha">
           <a className="botao-link" href={URL_COFRE} target="_blank" rel="noopener noreferrer"><KeyRound size={17} aria-hidden="true" /> Cofre</a>
           <button className="icone" onClick={() => supabase.auth.signOut()} aria-label="Sair"><LogOut size={18} /></button>
         </div>
       </header>
+      <Gaveta aberta={menu} onFechar={() => setMenu(false)} />
+      <MenuLateral />
+      <div className="conteudo">
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={loc.pathname.split('/')[1] || 'inicio'} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18, ease: 'easeOut' }}>
           <Suspense fallback={<main><Carregando /></main>}>
@@ -73,14 +79,8 @@ function Area() {
           </Suspense>
         </motion.div>
       </AnimatePresence>
-      <nav className="abas" aria-label="Navegação principal">
-        <NavLink to="/" end><Home size={21} aria-hidden="true" /><span>Início</span></NavLink>
-        <NavLink to="/mes"><CalendarDays size={21} aria-hidden="true" /><span>Mês</span></NavLink>
-        <NavLink to="/faturas"><CreditCard size={21} aria-hidden="true" /><span>Faturas</span></NavLink>
-        <NavLink to="/pessoas"><Users size={21} aria-hidden="true" /><span>Pessoas</span></NavLink>
-        <NavLink to="/investimentos"><LineChart size={21} aria-hidden="true" /><span>Investir</span></NavLink>
-        <NavLink to="/mais" className={({ isActive }) => (isActive || ['/contas', '/categorias'].includes(loc.pathname) ? 'active' : '')}><Menu size={21} aria-hidden="true" /><span>Mais</span></NavLink>
-      </nav>
+      </div>
+      <BarraInferior onMenu={() => setMenu(true)} menuAtivo={!ROTAS_BARRA.includes(loc.pathname)} />
     </CadastrosProvider>
   );
 }

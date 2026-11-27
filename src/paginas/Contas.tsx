@@ -98,7 +98,7 @@ const leitorBoleto = () => {
   return new BrowserMultiFormatReader(hints);
 };
 
-function FormConta({ k, onFechar, onSalvo }: { k: Partial<Conta>; onFechar: () => void; onSalvo: () => void }) {
+export function FormConta({ k, onFechar, onSalvo }: { k: Partial<Conta>; onFechar: () => void; onSalvo: () => void }) {
   const { c } = useCadastros();
   const [f, setF] = useState(k);
   const [valor, setValor] = useState(k.valor ? String(k.valor).replace('.', ',') : '');

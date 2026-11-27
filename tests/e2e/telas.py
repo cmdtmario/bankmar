@@ -223,7 +223,7 @@ def main():
                 pg.goto(BASE + tela)
                 pg.wait_for_load_state("networkidle")
                 pg.wait_for_timeout(700)
-                assert pg.locator("nav.abas").is_visible(), f"{tela}: barra de navegação ausente"
+                assert pg.locator(".menu-lateral" if nome_tam == "desktop" else "nav.abas").is_visible(), f"{tela}: navegação ausente"
                 assert not pg.locator(".erro").count(), f"{tela}: mensagem de erro na tela: {pg.locator('.erro').first.inner_text()}"
                 sem_rolagem = pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
                 assert sem_rolagem, f"{tela}: rolagem horizontal em {nome_tam}"
@@ -273,6 +273,28 @@ def main():
             pg.get_by_role("radio", name="Instituição").click()
             pg.wait_for_timeout(300)
             pg.screenshot(path=str(SAIDA / f"{nome_tam}-47-investimentos-por-instituicao.png"), full_page=True)
+            # menu: gaveta no celular/tablet, lateral no computador
+            if nome_tam != "desktop":
+                pg.goto(BASE + "/")
+                pg.wait_for_load_state("networkidle")
+                pg.get_by_role("button", name="Abrir menu").click()
+                pg.wait_for_timeout(300)
+                assert pg.get_by_role("dialog", name="Menu").is_visible(), "gaveta não abriu"
+                pg.screenshot(path=str(SAIDA / f"{nome_tam}-70-menu.png"))
+                pg.get_by_role("dialog", name="Menu").get_by_role("link", name="Cartões").click()
+                pg.wait_for_url("**/cartoes")
+                pg.wait_for_timeout(500)
+                assert not pg.get_by_role("dialog", name="Menu").count(), "gaveta não fechou ao escolher"
+            else:
+                assert pg.locator(".menu-lateral").is_visible(), "menu lateral ausente no computador"
+            # mês: atalho para alterar o valor
+            pg.goto(BASE + "/mes")
+            pg.wait_for_load_state("networkidle")
+            pg.locator(".razao-linha", has_text="Neoenergia").first.click()
+            pg.get_by_role("button", name="Alterar valor ou vencimento").click()
+            assert pg.get_by_label("Valor deste mês").is_visible(), "edição rápida do valor"
+            pg.screenshot(path=str(SAIDA / f"{nome_tam}-71-mes-editar-valor.png"))
+            pg.keyboard.press("Escape")
             # cartões: detalhe com isenção, VIP e benefícios alterados
             pg.goto(BASE + "/cartoes")
             pg.wait_for_load_state("networkidle")
