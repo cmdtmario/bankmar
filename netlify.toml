@@ -1,6 +1,9 @@
+# A hospedagem passou para o Cloudflare (wrangler.jsonc). O Netlify não publica mais nada:
+# o "ignore" cancela todo build, então nenhuma publicação gasta crédito.
 [build]
   command = "npm ci && npm run build"
   publish = "dist"
+  ignore = "exit 0"
 
 [build.environment]
   NODE_VERSION = "22"
