@@ -193,4 +193,32 @@ select pg_temp.ok((select anterior from inv_cotacoes_recentes where codigo='VALE
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000b","aal":"aal2"}', false);
 select pg_temp.ok((select count(*) from inv_cotacoes_recentes) = 0, 'cotações de outro usuário não aparecem');
 reset role;
+
+-- Entrega 2: cartões e milhas
+set role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","aal":"aal2"}', false);
+do $$ begin
+  begin
+    update cards set observacoes = 'cartao 4111 1111 1111 1111' where id = '30000000-0000-0000-0000-000000000001';
+    raise exception 'FALHOU: número de cartão nas observações deveria ser recusado';
+  exception when check_violation then raise notice 'ok - observação com número de cartão é recusada';
+  end;
+end $$;
+insert into mil_programas (id, nome, limite_cpfs) values ('60000000-0000-0000-0000-000000000001','Latam Pass',24);
+insert into mil_contas (id, programa_id) values ('61000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001');
+insert into mil_contas (id, programa_id, titular, de_terceiro) values ('61000000-0000-0000-0000-000000000002','60000000-0000-0000-0000-000000000001','Diego',true);
+insert into mil_movimentos (conta_id, data, tipo, origem, pontos) values ('61000000-0000-0000-0000-000000000001','2026-01-10','entrada','cartao',100000);
+insert into mil_movimentos (conta_id, data, tipo, origem, valor) values ('61000000-0000-0000-0000-000000000001','2026-01-10','custo','clube',1500);
+insert into mil_movimentos (conta_id, data, tipo, origem, pontos) values ('61000000-0000-0000-0000-000000000001','2026-02-10','saida','uso',20000);
+insert into mil_vendas (conta_id, data, quantidade, valor_total, cpfs) values ('61000000-0000-0000-0000-000000000001','2026-03-01',30000,750,2);
+insert into mil_emissoes (conta_id, data, milhas, cpfs) values ('61000000-0000-0000-0000-000000000001','2026-04-01',10000,1);
+select pg_temp.ok((select saldo from mil_saldos where conta_id='61000000-0000-0000-0000-000000000001') = 40000, 'saldo = entradas − usos − emissões − vendas');
+select pg_temp.ok((select custo_milheiro from mil_saldos where conta_id='61000000-0000-0000-0000-000000000001') = 15, 'custo do milheiro = custos ÷ entradas × 1000');
+insert into card_vip_usos (card_id, data, aeroporto) values ('30000000-0000-0000-0000-000000000001','2026-11-01','BSB');
+select pg_temp.ok((select count(*) from audit_log where tabela = 'card_vip_usos') = 1, 'uso de sala VIP é auditado');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000b","aal":"aal2"}', false);
+select pg_temp.ok((select count(*) from mil_saldos) = 0 and (select count(*) from mil_movimentos) = 0, 'milhas de outro usuário não aparecem');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","aal":"aal1"}', false);
+select pg_temp.ok((select count(*) from mil_movimentos) = 0, 'sem a segunda etapa de login, milhas ficam fechadas');
+reset role;
 select 'TODOS OS TESTES SQL PASSARAM' as resultado;

@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     db.from('bills').select('id, user_id, descricao, vencimento, valor').in('vencimento', [hoje, amanha]),
     db.from('invoice_summary').select('invoice_id, user_id, card_id, vencimento, total, confirmada').in('vencimento', [hoje, amanha]),
     db.from('payments').select('bill_id, invoice_id, valor'),
-    db.from('cards').select('id, apelido'),
+    db.from('cards').select('id, apelido, ativo'),
   ]);
   for (const r of [contas, faturas, pags, cards]) if (r.error) return new Response(r.error.message, { status: 500 });
 
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   const nomeCartao = (id: string) => (cards.data ?? []).find((c) => c.id === id)?.apelido ?? 'Cartão';
   const itens: ItemVencimento[] = [
     ...(contas.data ?? []).map((c) => ({ user_id: c.user_id, tipo: 'conta' as const, id: c.id, descricao: c.descricao, vencimento: c.vencimento, valor: Number(c.valor), pago: pagoDe('bill_id', c.id) })),
-    ...(faturas.data ?? []).filter((f) => f.confirmada).map((f) => ({ user_id: f.user_id, tipo: 'fatura' as const, id: f.invoice_id, descricao: `fatura ${nomeCartao(f.card_id)}`, vencimento: f.vencimento, valor: Number(f.total), pago: pagoDe('invoice_id', f.invoice_id) })),
+    ...(faturas.data ?? []).filter((f) => f.confirmada && (cards.data ?? []).find((c) => c.id === f.card_id)?.ativo !== false).map((f) => ({ user_id: f.user_id, tipo: 'fatura' as const, id: f.invoice_id, descricao: `fatura ${nomeCartao(f.card_id)}`, vencimento: f.vencimento, valor: Number(f.total), pago: pagoDe('invoice_id', f.invoice_id) })),
   ];
   const avisos = montarAvisos(itens, hoje, amanha);
 

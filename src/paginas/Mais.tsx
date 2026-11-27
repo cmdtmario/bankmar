@@ -2,9 +2,8 @@
 // importação da planilha 2026 (RF-90/94) e histórico de importações (RNF-04).
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, PieChart, Receipt } from 'lucide-react';
+import { ChevronRight, CreditCard, PieChart, Plane, Receipt } from 'lucide-react';
 import { supabase, ok } from '../lib/supabase';
-import type { Cartao } from '../lib/dados';
 import { importarPlanilha2026, totaisDoMes, PESSOA_A_REVISAR, type ResultadoImportacao } from '../lib/importacao/planilha2026';
 import { sugerirCategoria, type RegraCategoria } from '../lib/regras';
 import { exportarTudo } from '../lib/exportar';
@@ -13,8 +12,7 @@ import { ativarPush } from '../lib/push';
 import { Erro, Modal, useAcao, useCadastros } from '../ui/comum';
 
 export function Mais() {
-  const { c, recarregar } = useCadastros();
-  const [cartao, setCartao] = useState<Partial<Cartao> | null>(null);
+  const { recarregar } = useCadastros();
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [logs, setLogs] = useState<{ id: string; tipo: string; arquivo: string | null; em: string; importadas: number; ignoradas: number; alteradas: number }[]>([]);
@@ -35,18 +33,11 @@ export function Mais() {
       <Erro msg={erro} />
       <div className="atalhos">
         <Link to="/contas" className="card atalho"><Receipt size={22} aria-hidden="true" /><span className="grow"><strong>Contas</strong><span className="sub">Recorrentes, avulsas e boletos</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
+        <Link to="/cartoes" className="card atalho"><CreditCard size={22} aria-hidden="true" /><span className="grow"><strong>Cartões</strong><span className="sub">Isenção, sala VIP, pontos e benefícios</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
+        <Link to="/milhas" className="card atalho"><Plane size={22} aria-hidden="true" /><span className="grow"><strong>Milhas e pontos</strong><span className="sub">Saldos, custo do milheiro, vendas e emissões</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
         <Link to="/categorias" className="card atalho"><PieChart size={22} aria-hidden="true" /><span className="grow"><strong>Gastos por categoria</strong><span className="sub">Rosca, 12 meses e regras</span></span><ChevronRight size={18} aria-hidden="true" /></Link>
       </div>
       {msg && <div className="okmsg">{msg}</div>}
-
-      <h2>Cartões</h2>
-      <button onClick={() => setCartao({ apelido: '', emissor: 'outro', ativo: true })}>+ Cartão</button>
-      {c.cartoes.map((k) => (
-        <div className="card linha entre" key={k.id} style={{ opacity: k.ativo ? 1 : 0.5 }}>
-          <span className="grow"><strong>{k.apelido}</strong><div className="sub">{k.emissor === 'outro' ? 'sem leitor de PDF' : `leitor ${k.emissor}`} · {k.final4 ? `final ${k.final4}` : 'final não informado'} · vence dia {k.dia_vencimento ?? '—'}{k.ativo ? '' : ' · desativado'}</div></span>
-          <button onClick={() => setCartao(k)}>Editar</button>
-        </div>
-      ))}
 
       <h2>Avisos de vencimento</h2>
       <div className="card">
@@ -77,27 +68,6 @@ export function Mais() {
         <div className="sub" key={l.id}>{new Date(l.em).toLocaleString('pt-BR')} · {l.tipo} {l.arquivo ?? ''} · {l.importadas} importadas · {l.ignoradas} ignoradas · {l.alteradas} regras</div>
       ))}
 
-      {cartao && (
-        <Modal titulo={cartao.id ? 'Editar cartão' : 'Novo cartão'} onFechar={() => setCartao(null)}>
-          <p className="sub">Nunca informe o número completo, validade ou código de segurança — só os 4 últimos dígitos.</p>
-          <div className="campos">
-            <label>Apelido<input value={cartao.apelido ?? ''} onChange={(e) => setCartao({ ...cartao, apelido: e.target.value })} /></label>
-            <label>Leitor de fatura<select value={cartao.emissor} onChange={(e) => setCartao({ ...cartao, emissor: e.target.value as Cartao['emissor'] })}>
-              <option value="itau">Itaú</option><option value="caixa">Caixa</option><option value="outro">Outro (colar texto)</option></select></label>
-            <label>Final (4 dígitos)<input inputMode="numeric" maxLength={4} value={cartao.final4 ?? ''} onChange={(e) => setCartao({ ...cartao, final4: e.target.value.replace(/\D/g, '').slice(0, 4) || null })} /></label>
-            <label>Dia do vencimento<input type="number" min={1} max={31} value={cartao.dia_vencimento ?? ''} onChange={(e) => setCartao({ ...cartao, dia_vencimento: e.target.value ? Number(e.target.value) : null })} /></label>
-            <label>Banco de pagamento<input value={cartao.banco_pagamento ?? ''} onChange={(e) => setCartao({ ...cartao, banco_pagamento: e.target.value || null })} /></label>
-            <label>Ativo<select value={cartao.ativo ? '1' : '0'} onChange={(e) => setCartao({ ...cartao, ativo: e.target.value === '1' })}><option value="1">Sim</option><option value="0">Não (cancelado)</option></select></label>
-          </div>
-          <button className="pri" onClick={() => rodar(async () => {
-            if (!cartao.apelido?.trim()) throw new Error('Informe o apelido.');
-            if (cartao.final4 && !/^\d{4}$/.test(cartao.final4)) throw new Error('O final deve ter 4 dígitos.');
-            const d = { apelido: cartao.apelido.trim(), emissor: cartao.emissor, final4: cartao.final4 ?? null, dia_vencimento: cartao.dia_vencimento ?? null, banco_pagamento: cartao.banco_pagamento ?? null, ativo: cartao.ativo ?? true };
-            if (cartao.id) ok(await supabase.from('cards').update(d).eq('id', cartao.id)); else ok(await supabase.from('cards').insert(d));
-            setCartao(null); await recarregar();
-          })}>Salvar</button>
-        </Modal>
-      )}
       {plan && <PreviaPlanilha plan={plan} onFechar={() => setPlan(null)} onFeito={async (m) => { setPlan(null); setMsg(m); await recarregar(); }} />}
     </main>
   );

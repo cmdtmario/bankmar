@@ -55,9 +55,30 @@ DADOS = {
     "people": [{"id": "p1", "nome": "Diego", "apelido": None, "pix": "diego@pix.exemplo", "ativo": True},
                {"id": "p2", "nome": "Jessy", "apelido": None, "pix": None, "ativo": True}],
     "tags": [{"id": "t1", "nome": "Salão"}],
-    "cards": [{"id": "k1", "apelido": "Itaú Azul", "emissor": "itau", "final4": "1234", "dia_vencimento": 8, "banco_pagamento": "Itaú", "ativo": True},
+    "cards": [{"id": "k1", "apelido": "Itaú Azul", "emissor": "itau", "final4": "1234", "dia_vencimento": 8, "banco_pagamento": "Itaú", "ativo": True, "bandeira": "Visa", "anuidade": 1200,
+               "vip_acessos": 4, "vip_renovacao": (HOJE + timedelta(days=200)).isoformat(), "vip_obs": "Dependente tem acesso", "pontos_nacional": 3, "pontos_internacional": 3.5,
+               "mil_conta_id": "mc2", "cashback_pct": 1, "link": "https://example.com/beneficios", "beneficio_status": "alterado", "beneficio_verificado_em": HOJE.isoformat() + "T12:00:00Z"},
               {"id": "k2", "apelido": "Caixa Visa", "emissor": "caixa", "final4": "5678", "dia_vencimento": 8, "banco_pagamento": "Caixa", "ativo": True},
-              {"id": "k3", "apelido": "Nubank", "emissor": "outro", "final4": None, "dia_vencimento": 15, "banco_pagamento": "Nubank", "ativo": True}],
+              {"id": "k3", "apelido": "Nubank", "emissor": "outro", "final4": None, "dia_vencimento": 15, "banco_pagamento": "Nubank", "ativo": True, "vip_acessos": 999},
+              {"id": "k4", "apelido": "Cartão Antigo", "emissor": "outro", "final4": "9999", "dia_vencimento": 10, "banco_pagamento": None, "ativo": False, "desativado_em": "2025-10-20"}],
+    "card_isencoes": [{"id": "is1", "card_id": "k1", "tipo": "gasto_mensal", "meta": 8000, "meses": None, "ate": None, "observacao": None},
+                      {"id": "is2", "card_id": "k2", "tipo": "promocional", "meta": None, "meses": None, "ate": (HOJE + timedelta(days=40)).isoformat(), "observacao": "Isenção promocional"},
+                      {"id": "is3", "card_id": "k3", "tipo": "gasto_periodo", "meta": 30000, "meses": 3, "ate": None, "observacao": None}],
+    "card_vip_usos": [{"id": "vu1", "card_id": "k1", "data": (HOJE - timedelta(days=20)).isoformat(), "aeroporto": "BSB"}],
+    "card_beneficios": [{"id": "cb1", "card_id": "k1", "capturado_em": HOJE.isoformat() + "T12:00:00Z", "situacao": "pendente",
+                         "diff": {"removidas": ["Sala VIP: 4 acessos por ano para o titular."], "adicionadas": ["Sala VIP: 2 acessos por ano para o titular."]}}],
+    "mil_programas": [{"id": "pg1", "nome": "Smiles", "tipo": "aereo", "limite_cpfs": 25, "periodo_cpfs": "ano_civil"},
+                      {"id": "pg2", "nome": "TudoAzul", "tipo": "aereo", "limite_cpfs": None, "periodo_cpfs": "ano_civil"},
+                      {"id": "pg3", "nome": "Latam Pass", "tipo": "aereo", "limite_cpfs": 24, "periodo_cpfs": "ano_civil"}],
+    "mil_saldos": [{"conta_id": "mc1", "programa_id": "pg1", "programa": "Smiles", "titular": "Mário", "de_terceiro": False, "ativa": True, "entradas": 240000, "saidas": 60000, "vendidas": 90000, "saldo": 90000, "custos": 2100, "custo_milheiro": 8.75, "receita_vendas": 1410},
+                   {"conta_id": "mc2", "programa_id": "pg2", "programa": "TudoAzul", "titular": "Mário", "de_terceiro": False, "ativa": True, "entradas": 180000, "saidas": 20000, "vendidas": 0, "saldo": 160000, "custos": 2700, "custo_milheiro": 15, "receita_vendas": 0},
+                   {"conta_id": "mc3", "programa_id": "pg1", "programa": "Smiles", "titular": "Diego", "de_terceiro": True, "ativa": True, "entradas": 12000, "saidas": 0, "vendidas": 0, "saldo": 12000, "custos": 500, "custo_milheiro": 41.67, "receita_vendas": 0}],
+    "mil_movimentos": [{"id": f"mm{i}", "conta_id": "mc1" if i % 2 else "mc2", "data": (HOJE - timedelta(days=12 * i)).isoformat(), "tipo": "entrada" if i % 3 else "custo",
+                        "origem": "clube" if i % 3 else "clube", "pontos": None if i % 3 == 0 else 2000 + i * 100, "valor": 42.0 if i % 3 == 0 else None,
+                        "descricao": "Clube Smiles" if i % 2 else "Clube TudoAzul", "invoice_id": None, "previsto": None, "transferencia_id": None} for i in range(14)],
+    "mil_vendas": [{"id": "vd1", "conta_id": "mc1", "plataforma": "Balcão", "data": (HOJE - timedelta(days=30)).isoformat(), "quantidade": 90000, "valor_total": 1410, "prazo_dias": 0, "data_pagamento": (HOJE - timedelta(days=30)).isoformat(), "cpfs": 2, "status": "pago"}],
+    "mil_emissoes": [{"id": "em1", "conta_id": "mc1", "data": (HOJE - timedelta(days=60)).isoformat(), "localizador": "ABC123", "data_voo": "10/01/2027", "trecho": "BSB>GRU", "card_id": "k1", "cartao_texto": None,
+                      "milhas": 60000, "valor": 98.5, "cashback": 0, "status": "emitida", "reembolsado": 0, "cpfs": 2}],
     "months": [{"id": f"m{i}", "competencia": mes(HOJE, -i).isoformat(), "renda": 15200.0 + (i % 3) * 300} for i in range(12)],
     "gastos_categoria": [
         {"competencia": mes(HOJE, -i).isoformat(), "category_id": c, "total": v * (1.3 if c in ("c1", "c2") else 1) * (1 + (i % 4) / 10),
@@ -156,7 +177,7 @@ def responder(route):
         for v in vals:
             op, _, alvo = v.partition(".")
             if op in ops:
-                linhas = [l for l in linhas if l.get(campo) is not None and ops[op](str(l.get(campo)), alvo)]
+                linhas = [l for l in linhas if l.get(campo) is not None and ops[op](str(l.get(campo)).lower() if isinstance(l.get(campo), bool) else str(l.get(campo)), alvo)]
     if "limit" in q:
         linhas = linhas[: int(q["limit"][0])]
     if "vnd.pgrst.object" in (req.headers.get("accept") or ""):
@@ -167,7 +188,7 @@ def responder(route):
     return route.fulfill(status=200, content_type="application/json", body=json.dumps(linhas))
 
 
-TELAS = ["/", "/mes", "/faturas", "/contas", "/pessoas", "/pessoas/p1", "/categorias", "/mais", "/investimentos"]
+TELAS = ["/", "/mes", "/faturas", "/contas", "/pessoas", "/pessoas/p1", "/categorias", "/mais", "/investimentos", "/cartoes", "/milhas"]
 TAMANHOS = {"celular": (375, 812), "deitado": (812, 375), "tablet": (768, 1024), "desktop": (1280, 900)}
 
 
@@ -244,6 +265,25 @@ def main():
             pg.get_by_role("radio", name="Instituição").click()
             pg.wait_for_timeout(300)
             pg.screenshot(path=str(SAIDA / f"{nome_tam}-47-investimentos-por-instituicao.png"), full_page=True)
+            # cartões: detalhe com isenção, VIP e benefícios alterados
+            pg.goto(BASE + "/cartoes")
+            pg.wait_for_load_state("networkidle")
+            assert pg.get_by_text("Cartão Antigo").count() == 0, "cartão cancelado não deveria aparecer na lista principal"
+            pg.locator(".razao-linha", has_text="Itaú Azul").first.click()
+            assert pg.get_by_role("dialog").get_by_text("3 de 4", exact=True).is_visible(), "contador de sala VIP"
+            assert pg.get_by_text("Sala VIP: 2 acessos por ano").first.is_visible(), "mudança de benefício"
+            pg.screenshot(path=str(SAIDA / f"{nome_tam}-50-cartao-detalhe.png"), full_page=True)
+            pg.keyboard.press("Escape")
+            # milhas: abas
+            pg.goto(BASE + "/milhas")
+            pg.wait_for_load_state("networkidle")
+            assert pg.get_by_text("Pontos de cartão a confirmar").is_visible()
+            for n, aba in enumerate(["Movimentos", "Vendas", "Emissões"], 1):
+                pg.get_by_role("tab", name=aba).click()
+                pg.wait_for_timeout(300)
+                assert not pg.locator(".erro").count(), f"milhas {aba}: erro na tela"
+                assert pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), f"milhas {aba}: rolagem horizontal em {nome_tam}"
+                pg.screenshot(path=str(SAIDA / f"{nome_tam}-5{n}-milhas-{aba.lower()}.png"), full_page=True)
             # link público
             pg2 = nav.new_context(viewport={"width": w, "height": h}, reduced_motion="reduce").new_page()
             pg2.context.route("https://demo.supabase.co/**", responder)

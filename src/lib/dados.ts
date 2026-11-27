@@ -6,7 +6,13 @@ import { somaMeses } from './formato';
 export interface Pessoa { id: string; nome: string; apelido: string | null; pix: string | null; ativo: boolean }
 export interface Tag { id: string; nome: string }
 export interface Categoria { id: string; nome: string; ativo: boolean }
-export interface Cartao { id: string; apelido: string; emissor: 'itau' | 'caixa' | 'outro'; final4: string | null; dia_vencimento: number | null; banco_pagamento: string | null; ativo: boolean }
+export interface Cartao {
+  id: string; apelido: string; emissor: 'itau' | 'caixa' | 'outro'; final4: string | null; dia_vencimento: number | null; banco_pagamento: string | null; ativo: boolean;
+  bandeira?: string | null; dia_fechamento?: number | null; mil_conta_id?: string | null; pontos_nacional?: number | null; pontos_internacional?: number | null;
+  pontos_obs?: string | null; anuidade?: number | null; link?: string | null; observacoes?: string | null; cashback_pct?: number; vip_acessos?: number | null;
+  vip_renovacao?: string | null; vip_obs?: string | null; instituicao_invest?: string | null; beneficio_status?: 'nunca' | 'ok' | 'alterado' | 'nao_verificado';
+  beneficio_verificado_em?: string | null; desativado_em?: string | null;
+}
 export interface PagamentoDb extends Pagamento { id: string; bill_id: string | null; invoice_id: string | null; banco: string | null }
 export interface Conta { id: string; competencia: string; template_id: string | null; descricao: string; vencimento: string | null; valor: number; banco_pagamento: string | null; category_id: string | null; split_rule: RegraDivisao; observacao: string | null; origem: string; total_mario?: number; pagamentos: PagamentoDb[] }
 export interface FaturaResumo { invoice_id: string; card_id: string; competencia: string; vencimento: string | null; total_impresso: number | null; confirmada: boolean; total: number; total_mario: number; qtd_linhas: number; qtd_projetadas: number; qtd_nao_conferidas: number; pagamentos: PagamentoDb[] }

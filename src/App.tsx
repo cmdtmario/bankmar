@@ -12,6 +12,8 @@ const Faturas = lazy(() => import('./paginas/Faturas').then((m) => ({ default: m
 const Categorias = lazy(() => import('./paginas/Categorias').then((m) => ({ default: m.Categorias })));
 const Mais = lazy(() => import('./paginas/Mais').then((m) => ({ default: m.Mais })));
 const Compartilhado = lazy(() => import('./paginas/Compartilhado').then((m) => ({ default: m.Compartilhado })));
+const Cartoes = lazy(() => import('./paginas/Cartoes').then((m) => ({ default: m.Cartoes })));
+const Milhas = lazy(() => import('./paginas/Milhas').then((m) => ({ default: m.Milhas })));
 const Investimentos = lazy(() => import('./paginas/Investimentos').then((m) => ({ default: m.Investimentos })));
 const Pessoas = lazy(() => import('./paginas/Pessoas').then((m) => ({ default: m.Pessoas })));
 const PessoaDetalhe = lazy(() => import('./paginas/Pessoas').then((m) => ({ default: m.PessoaDetalhe })));
@@ -61,6 +63,8 @@ function Area() {
             <Route path="/pessoas/:id" element={<PessoaDetalhe />} />
             <Route path="/categorias" element={<Categorias />} />
             <Route path="/investimentos" element={<Investimentos />} />
+            <Route path="/cartoes" element={<Cartoes />} />
+            <Route path="/milhas" element={<Milhas />} />
             <Route path="/mais" element={<Mais />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

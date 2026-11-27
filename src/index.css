@@ -340,3 +340,23 @@ input[type="file"]::file-selector-button { background: var(--card); color: var(-
 .venc-linha .num { display: flex; flex-direction: column; align-items: flex-end; }
 .link-acao { border: 0; background: none; color: var(--ouro-claro); font-weight: 500; min-height: 32px; padding: 0 0 0 12px; }
 .link-acao:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Cartões e Milhas */
+.bloco-secundario { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--linha); }
+.bloco-secundario h2 { margin-top: 0; }
+.cancelados .razao-cod { color: var(--sub); }
+.razao-linha.estatico { cursor: default; }
+.razao-linha.estatico:hover { background: none; }
+.regra-isencao { padding: 8px 0; border-bottom: 1px solid var(--linha); }
+.regra-isencao .barra { margin: 6px 0 4px; }
+.vip-contador { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.vip-contador strong { font-size: 1.35rem; }
+.link-externo { color: var(--ouro-claro); display: inline-flex; align-items: center; gap: 4px; min-height: 36px; }
+.diff { border-left: 2px solid var(--alerta); padding: 4px 0 4px 12px; margin: 8px 0; font-size: .88rem; }
+.diff p { margin: 0 0 6px; }
+.diff-sai { color: var(--perda); }
+.diff-entra { color: var(--ganho); }
+.perigo-texto { color: var(--perda); border-color: rgba(229,146,127,.35); }
+.campo-largo { grid-column: 1 / -1; }
+.razao-tabela thead th:not([aria-sort]) { padding: 8px 6px; font-size: .78rem; white-space: nowrap; }
+@media (max-width: 600px) { .razao-tabela th, .razao-tabela td { padding-left: 4px; padding-right: 4px; font-size: .84rem; } }

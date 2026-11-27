@@ -28,3 +28,16 @@ select cron.schedule(
   );
   $$
 );
+
+-- Cartões: checagem das páginas de benefícios no dia 1 de cada mês, 9h de Brasília (12:00 UTC).
+select cron.schedule(
+  'beneficios-mensal',
+  '0 12 1 * *',
+  $$
+  select net.http_post(
+    url := 'https://<ID-DO-PROJETO>.supabase.co/functions/v1/beneficios-mensal',
+    headers := jsonb_build_object('Authorization', 'Bearer <CRON_SECRET>', 'Content-Type', 'application/json'),
+    body := '{}'::jsonb
+  );
+  $$
+);

@@ -31,7 +31,7 @@ export function instalarDemo() {
       if (['select', 'order', 'limit', 'offset'].includes(campo)) continue;
       const [op, ...resto] = v.split('.');
       const alvo = resto.join('.');
-      if (ops[op]) linhas = linhas.filter((l) => l[campo] != null && ops[op](String(l[campo]), alvo));
+      if (ops[op]) linhas = linhas.filter((l) => l[campo] != null && ops[op](typeof l[campo] === 'boolean' ? String(l[campo]).toLowerCase() : String(l[campo]), alvo));
     }
     const ordem = url.searchParams.get('order');
     if (ordem) {

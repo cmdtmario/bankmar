@@ -26,3 +26,4 @@ jobs:
         run: |
           supabase functions deploy avisos-vencimento --no-verify-jwt --project-ref "$REF"
           supabase functions deploy investimentos-diario --no-verify-jwt --project-ref "$REF"
+          supabase functions deploy beneficios-mensal --no-verify-jwt --project-ref "$REF"

@@ -114,7 +114,7 @@ export async function carregarPainel(comp: string, hoje: string): Promise<Painel
     supabase.from('categories').select('id, nome'),
     supabase.from('bills').select('id, descricao, vencimento, valor, banco_pagamento').gte('vencimento', somaMeses(comp, -2)).lte('vencimento', somaMeses(comp, 2)),
     supabase.from('invoice_summary').select('*').gte('competencia', somaMeses(comp, -2)).lte('competencia', somaMeses(comp, 1)),
-    supabase.from('cards').select('id, apelido, banco_pagamento'),
+    supabase.from('cards').select('id, apelido, banco_pagamento, ativo'),
     supabase.from('payments').select('*'),
     supabase.from('person_items').select('person_id, valor').not('person_id', 'is', null),
     supabase.from('receipts').select('person_id, valor'),
@@ -126,7 +126,8 @@ export async function carregarPainel(comp: string, hoje: string): Promise<Painel
     gastos: ok(gastos) as Brutos['gastos'],
     categorias: ok(categorias) as Brutos['categorias'],
     contas: ok(contas) as Brutos['contas'],
-    faturas: ok(faturas) as Brutos['faturas'],
+    // RF-44: cartão desativado some do dia a dia (o histórico continua em Faturas).
+    faturas: (ok(faturas) as (Brutos['faturas'][number] & { card_id: string })[]).filter((f) => (ok(cartoes) as { id: string; ativo: boolean }[]).find((k) => k.id === f.card_id)?.ativo !== false) as Brutos['faturas'],
     cartoes: ok(cartoes) as Brutos['cartoes'],
     pagamentos: ok(pagamentos) as PagamentoDb[],
     itensPessoas: ok(itens) as Brutos['itensPessoas'],

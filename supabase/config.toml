@@ -15,3 +15,6 @@ verify_jwt = false  # protegida pelo CRON_SECRET
 
 [functions.investimentos-diario]
 verify_jwt = false  # aceita CRON_SECRET ou o token do usuário (verificado no código)
+
+[functions.beneficios-mensal]
+verify_jwt = false  # aceita CRON_SECRET ou o token do usuário (verificado no código)
